@@ -136,7 +136,7 @@ print("Jet1 pt:",Jet1.pt)
 print(f"Axis1 jet1 (major) for each event: {axis1_jet1}")
 print(f"Axis2 jet1 (minor) for each event: {axis2_jet1}")
 
-
+'''
 #Jet1_NSubJetsPruned =Jet1.NSubJetsPruned'NSubJetsPruned', 'NSubJetsSoftDropped', 'NSubJetsTrimmed', 'NeutralEnergyFraction'
 
 if not os.path.exists('subjet_plots'):
@@ -229,3 +229,4 @@ plt.clf()
 
 ###################################################################################################                                                                                                                 
 print('done')
+'''

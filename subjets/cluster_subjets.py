@@ -43,7 +43,7 @@ Small T21: A small value means that the jet can easily be split into 2 subjets, 
 Large T21: A large value suggests that the jet is more complex, and it's harder to split into two subjets compared to one. It’s a more messy or complicated jet.
 '''
 
-filename = "/uscms/home/ashrivas/nobackup/Dark_Sector/SVJ/model_building/models/s-channel_mmed-1000_Nc-3_Nf-3_scale-50_mq-50.595_mpi-30_mrho-125.499_pvector-0.5_spectrum-snowmass_rinv-0.333333/events.root"
+filename = "/uscms/home/ashrivas/nobackup/Dark_Sector/Ak_SVJ/model_building/models/s-channel_mmed-1000_Nc-3_Nf-3_scale-50_mq-50.595_mpi-30_mrho-125.499_pvector-0.5_spectrum-snowmass_rinv-0.333333/events.root"
 Events = load_events(filename, with_constituents=True)
 events = Events
 
@@ -91,8 +91,11 @@ def get_lund_declustering(jet,subjet_rad,njets=2):
     
     jetdef = fastjet.JetDefinition(fastjet.antikt_algorithm, subjet_rad)
     cluster_sequence_subjets = fastjet.ClusterSequence(constituents_momentum, jetdef)
+    print(f"Constituents Momentum: {constituents_momentum}")
+    print(f"Type of Constituents Momentum: {type(constituents_momentum)}")
+    print(f"Number of Constituents: {len(constituents_momentum)}")
     # Extract the Lund declustering parameters (Delta and k_T)
-    lund_params = cluster_sequence_subjets.exclusive_jets_lund_declusterings(njets=njets)# Get Lund declustering parameters for the leading 2 jets
+    lund_params = cluster_sequence_subjets.exclusive_jets_lund_declusterings(njets=1)# Get Lund declustering parameters for the leading 2 jets
     
 
     print(f"Type of Jet1_lund: {type(lund_params)}")
