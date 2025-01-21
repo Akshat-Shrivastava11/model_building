@@ -29,16 +29,13 @@ def normalize_angle(angle):
 def deltaR(jet):
     deta_particle = np.abs(jet.eta-jet.Constituents.eta)
     dphi_particle = np.abs(normalize_angle(jet.phi-jet.Constituents.phi))
-    dR = np.sqrt(deta_particle**2+dphi_particle)
+    dR = np.sqrt(deta_particle**2+dphi_particle**2)
     return dR
 
 def calculate_girth(jet):
-    girth = []
     particle_dR = deltaR(jet)
-    girth_val =  ak.sum(jet.Constituents.pt * particle_dR, axis=-1)
-    girth.append(girth_val)
-
-    np.divide(girth,jet.pt) #normalize wrt jet pt
+    girth = ak.sum(jet.Constituents.pt * particle_dR, axis=-1)
+    girth = np.divide(girth,jet.pt) #normalize wrt jet pt
     return girth
 
 def calculate_ptD(jet):
