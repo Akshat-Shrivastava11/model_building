@@ -6,9 +6,8 @@ import mplhep as hep
 import pickle
 
 samples = [
-    {"name": "CMS", "model": "s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_rinv-0.3"},
-    {"name": "Snowmass", "model": "s-channel_mmed-1000_Nc-3_Nf-3_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-snowmass_rinv-0.333333"},
-    {"name": "Snowmass_cmslike", "model": "s-channel_mmed-1000_Nc-3_Nf-3_scale-33.3333_mq-33.73_mpi-20_mrho-83.666_pvector-0.5_spectrum-snowmass_cmslike_rinv-0.3"}
+    {"name": r"CMS ($r_{\text{inv}} = 0.667$)", "model": "s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_rinv-0.666667"},
+    {"name": r"Snowmass ($m_{\text{dark}} = 20\,\text{GeV}$)", "model": "s-channel_mmed-1000_Nc-3_Nf-3_scale-33.3333_mq-33.73_mpi-20_mrho-83.666_pvector-0.5_spectrum-snowmass_rinv-0"},
 ]
 
 # stylistic options
@@ -50,9 +49,10 @@ def make_plot(hname):                         # hists is a dict containing
     outdir = "All_plots"
     os.makedirs(outdir,exist_ok=True)
     plt.savefig('{}/{}.pdf'.format(outdir,hname),bbox_inches='tight')
+    plt.close(fig)
 
 def make_all_plots():
-    for hname in hists['CMS']:
+    for hname in hists[samples[0]["name"]]:
         make_plot(hname)
 
 if __name__=="__main__":
