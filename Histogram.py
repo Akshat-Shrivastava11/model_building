@@ -141,6 +141,14 @@ def histogram(filename, helper):
     events["DeltaPhi_MET_Jet1"] = np.abs(normalize_angle(events.MissingET.phi - events["Jet1_phi"]))
     events["DeltaPhi_MET_Jet2"] = np.abs(normalize_angle(events.MissingET.phi - events["Jet2_phi"]))
 
+    # add substructure quantities
+    events["Jet1_girth"] = calculate_girth(events["Jet1"])
+    events["Jet2_girth"] = calculate_girth(events["Jet2"])
+    events["Jet1_ptD"] = calculate_ptD(events["Jet1"])
+    events["Jet2_ptD"] = calculate_ptD(events["Jet2"])
+    events["Jet1_majoraxis"], events["Jet1_minoraxis"] = calc_axis1_axis2(events["Jet1"])
+    events["Jet2_majoraxis"], events["Jet2_minoraxis"] = calc_axis1_axis2(events["Jet2"])
+
     # Stable inv frac
     dark_hadron_ids = helper.darkHadronFinalIDs
     stable_particle_ids = helper.stableIDs
