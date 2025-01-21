@@ -202,14 +202,14 @@ def histogram(filename, helper):
         "DeltaPhi": fill_hist("DeltaPhi",20,0,3.5,r"$\Delta\phi(JJ)$",Events),
         "DeltaPhi_MET_Jet1": fill_hist("DeltaPhi_MET_Jet1",25,0,3.5,r"$\Delta\phi(J_1,p_{\text{T}}^{\text{miss}})$",Events),
         "DeltaPhi_MET_Jet2": fill_hist("DeltaPhi_MET_Jet2",25,0,3.5,r"$\Delta\phi(J_2,p_{\text{T}}^{\text{miss}})$",Events),
-        "Jet1_girth": fill_hist("Jet1_girth",50,0,1,r"DeltaR",Events),
-        "Jet2_girth": fill_hist("Jet2_girth",50,0,1,r"DeltaR",Events),
-        "Jet1_ptD": fill_hist("Jet1_ptD",50,0,1.01,r"$p_{\text{tD}}(J_1)$ [GeV]",Events),
-        "Jet2_ptD": fill_hist("Jet2_ptD",50,0,1.01,r"$p_{\text{tD}}(J_2)$ [GeV]",Events),
-        "Jet1_major": fill_hist("Jet1_majoraxis",50,0,1,r"Major Axis",Events),
-        "Jet1_minor": fill_hist("Jet1_minoraxis",50,0,1,r"Minor Axis",Events),
-        "Jet2_major": fill_hist("Jet2_majoraxis",50,0,1,r"Major Axis",Events),
-        "Jet2_minor": fill_hist("Jet2_minoraxis",50,0,1,r"Minor Axis",Events),
+        "Jet1_girth": fill_hist("Jet1_girth",50,0,1,r"$g_{\text{jet}}(J_1)$",Events),
+        "Jet2_girth": fill_hist("Jet2_girth",50,0,1,r"$g_{\text{jet}}(J_2)$",Events),
+        "Jet1_ptD": fill_hist("Jet1_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_1)$",Events),
+        "Jet2_ptD": fill_hist("Jet2_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_2)$",Events),
+        "Jet1_major": fill_hist("Jet1_majoraxis",50,0,1,r"$\sigma_{\text{major}}(J_1)$",Events),
+        "Jet1_minor": fill_hist("Jet1_minoraxis",50,0,1,r"$\sigma_{\text{minor}}(J_1)$",Events),
+        "Jet2_major": fill_hist("Jet2_majoraxis",50,0,1,r"$\sigma_{\text{major}}(J_2)$",Events),
+        "Jet2_minor": fill_hist("Jet2_minoraxis",50,0,1,r"$\sigma_{\text{major}}(J_2)$",Events),
         "stable_invisible_fraction": fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$",Events)
     }
 
