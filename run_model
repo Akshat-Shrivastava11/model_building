@@ -9,6 +9,7 @@ from svjHelper import svjHelper, extHelper
 import Histogram
 
 sys.path.append(os.getcwd()+"/configs")
+sys.path.append(os.getcwd()+"/configs/matt")
 
 def separate_args(args,groups):
     separated = {group.title : MagiConfig(**{a.dest:getattr(args,a.dest,None) for a in group._group_actions}) for group in groups}
