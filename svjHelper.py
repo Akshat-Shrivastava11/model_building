@@ -139,11 +139,12 @@ class quarklist(object):
         return [q for q in self.qlist if (q.active if active else q.on)]
 
 class darkHadron():
-    def __init__(self, id, mass, decay, props=[], rinv=None, dm=None, decay_args=None, placeholder=False):
+    def __init__(self, id, mass, decay, props=[], rinv=None, dm=None, decay_args=None, Nf=None, placeholder=False):
         self.id = id
         self.mass = mass
         self.decay = decay
         self.decay_args = decay_args
+        self.Nf = Nf
         self.props = props
         self.placeholder = placeholder
         if not hasattr(self, self.decay+'Decay'):
@@ -212,6 +213,34 @@ class darkHadron():
         lines = ['{:d}:addChannel = 1 1 101 {:d} {:d}'.format(self.id,self.decay_args[0],self.decay_args[1])]
         return lines
 
+    def getDarkQuark(self):
+        quarkIndex = str(self.id)[4]
+        return int(quarkIndex)
+
+    def getAntiDarkQuark(self):
+        antiQuarkIndex = str(self.id)[5]
+        return int(antiQuarkIndex)
+
+    def darkRhoDecay(self):
+        lines = []
+        # equal branching fraction to all dark quark flavors
+        branching_fraction = 1/ self.Nf
+        darkQuarkFromRho = self.getDarkQuark()
+        antiDarkQuarkFromRho = self.getAntiDarkQuark()
+
+        for n in range(1,self.Nf+1):
+            # I don't really like this so I will try to come up with a better way but for now I think it is at least correct
+            if n > darkQuarkFromRho:
+                decay1 = -1 * int('4900{:d}{:d}1'.format(n, darkQuarkFromRho) )
+            else:
+                decay1 = int('4900{:d}{:d}1'.format(darkQuarkFromRho, n) )
+            if n > antiDarkQuarkFromRho:
+                decay2 = int('4900{:d}{:d}1'.format(n, antiDarkQuarkFromRho) )
+            else:
+                decay2 = -1 * int('4900{:d}{:d}1'.format(antiDarkQuarkFromRho, n) )
+            lines.append('{:d}:addChannel = 1 {:03f} 101 {:d} {:d}'.format(self.id, branching_fraction, decay1, decay2))
+        return lines
+
 class hvSpectrum():
     def populate(self, name, helper):
         if not hasattr(self, name+'Spectrum'):
@@ -268,26 +297,20 @@ class hvSpectrum():
                 pid_vector = int('4900' + str(i) + str(j) + '3')
                 if i == j:
                     # diagonal scalar unstable
-                    # dm=53? I don't understand this, check with kevin
-                    lines.append(darkHadron(pid_scalar,helper.mpi,'massInsertion',rinv=helper.rinv,dm=53))
+                    lines.append(darkHadron(pid_scalar,helper.mpi,'massInsertion'))
                     # diagonal vector unstable
                     # decays to stable non-diagonal scalars? which ones? 4900211,4900311?
+                    #lines.append(darkHadron(pid_vector,helper.mrho,'darkRho', Nf=helper.Nf))
                     lines.append(darkHadron(pid_vector,helper.mrho,'darkPion',decay_args=[4900211,-4900211]))
                 else:
-                    # only stable if carrying a stable quark... first Ns quarks are stable?
-                    if i <= helper.Ns:
+                    # only stable if carrying a stable quark... first Ns quarks are stable
+                    if i <= helper.Ns or j<= helper.Ns:
                         lines.append(darkHadron(pid_scalar,helper.mpi,'stable'))
                     else:
-                        lines.append(darkHadron(pid_scalar,helper.mpi,'massInsertion',rinv=helper.rinv,dm=53))
+                        lines.append(darkHadron(pid_scalar,helper.mpi,'massInsertion'))
+                    #lines.append(darkHadron(pid_vector,helper.mrho,'darkRho', Nf=helper.Nf))
                     lines.append(darkHadron(pid_vector,helper.mrho,'darkPion',decay_args=[4900111,4900211]))
 
-        # why doesn't snowmass have 31 scalar and vectors?
-        # darkHadron(4900111,helper.mpi,'massInsertion',rinv=helper.rinv,dm=53),
-        # darkHadron(4900211,helper.mpi,'stable'),
-        # darkHadron(4900113,helper.mrho,'darkPion',decay_args=[4900211,-4900211]),
-        # darkHadron(4900213,helper.mrho,'darkPion',decay_args=[4900111,4900211]),
-
-        print(lines)
         return self.dmForRinv() + lines
 
 class baseHelper():
@@ -346,7 +369,7 @@ class svjHelper(baseHelper):
         parser.add_argument("--mmed",type=float,required=True,help="mediator mass [GeV]")
         parser.add_argument("--Nc",type=int,required=True,help="number of dark colors")
         parser.add_argument("--Nf",type=int,required=True,help="number of dark flavors")
-        parser.add_argument("--Ns",type=int,required=True,help="number of stable dark quarks")
+        parser.add_argument("--Ns",type=int,default=None,help="number of stable dark quarks")
         parser.add_argument("--scale",type=float,required=True,help="dark force scale Lambda [GeV]")
         parser.add_argument("--mq",type=float,required=True,help="dark quark mass [GeV]")
         parser.add_argument("--mpi",type=float,required=True,help="dark pion mass [GeV]")
