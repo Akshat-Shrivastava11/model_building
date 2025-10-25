@@ -5,6 +5,7 @@ cd python_packages
 
 PKGS=(
 magiconfig \
+coffea==2025.7.0 \
 )
 
 for PKG in ${PKGS[@]}; do
