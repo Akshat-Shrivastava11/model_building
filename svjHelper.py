@@ -300,16 +300,14 @@ class hvSpectrum():
                     lines.append(darkHadron(pid_scalar,helper.mpi,'massInsertion'))
                     # diagonal vector unstable
                     # decays to stable non-diagonal scalars? which ones? 4900211,4900311?
-                    #lines.append(darkHadron(pid_vector,helper.mrho,'darkRho', Nf=helper.Nf))
-                    lines.append(darkHadron(pid_vector,helper.mrho,'darkPion',decay_args=[4900211,-4900211]))
+                    lines.append(darkHadron(pid_vector,helper.mrho,'darkRho', Nf=helper.Nf))
                 else:
                     # only stable if carrying a stable quark... first Ns quarks are stable
                     if i <= helper.Ns or j<= helper.Ns:
                         lines.append(darkHadron(pid_scalar,helper.mpi,'stable'))
                     else:
                         lines.append(darkHadron(pid_scalar,helper.mpi,'massInsertion'))
-                    #lines.append(darkHadron(pid_vector,helper.mrho,'darkRho', Nf=helper.Nf))
-                    lines.append(darkHadron(pid_vector,helper.mrho,'darkPion',decay_args=[4900111,4900211]))
+                    lines.append(darkHadron(pid_vector,helper.mrho,'darkRho', Nf=helper.Nf))
 
         return self.dmForRinv() + lines
 
