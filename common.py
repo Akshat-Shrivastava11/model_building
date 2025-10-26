@@ -4,7 +4,13 @@ import numba as nb
 from numpy.typing import NDArray
 import awkward as ak
 from coffea.nanoevents.methods import vector
-from coffea.nanoevents.methods.delphes import behavior, _set_repr_name, Particle
+from coffea.nanoevents.methods.delphes import behavior, _set_repr_name, Particle, MissingET
+
+# left out of https://github.com/scikit-hep/coffea/pull/1404
+MissingET.ProjectionClass2D = vector.TwoVectorRecord
+MissingET.ProjectionClass3D = vector.ThreeVectorRecord
+MissingET.ProjectionClass4D = MissingET
+MissingET.MomentumClass = vector.LorentzVectorRecord
 
 DelphesSchema.mixins.update({
     "ParticleFlowCandidate": "Particle",
@@ -105,6 +111,40 @@ def load_sample(sample,helper=None,schema=DelphesSchema,with_constituents=False)
     metadict["dataset"] = sample["name"]
     sample["events"] = load_events(f'{path}/events.root',schema=schema,metadict=metadict,with_constituents=with_constituents)
 
+def setup_vectors(events):
+    def is_vector(obj):
+        if not hasattr(obj,'fields'): return False
+        fields = [f.lower() for f in obj.fields]
+        prop_lists = [
+            ["eta", "phi"],
+            ["px", "py"],
+        ]
+        return any(all(prop in fields for prop in prop_list) for prop_list in prop_lists)
+
+    def rename_fields(events, name, mapping):
+        obj = events[name]
+        for old,new in mapping:
+            if not old in obj.fields: continue
+            events[name,new] = obj[old]
+        return events
+
+    for name in events.fields:
+        obj = events[name]
+        if not is_vector(obj):
+            continue
+
+        props = ["PT", "Eta", "Phi", "Mass", "Px", "Py", "Pz"]
+        props = [(prop, prop.lower()) for prop in props]
+        # special case: treat MET as 4-vector by setting energy=pt
+        props.extend([
+            ("MET","pt"),
+            ("MET","energy"),
+        ])
+        events = rename_fields(events, name, props)
+        events[name] = ak.with_name(events[name], DelphesSchema.mixins[name])
+
+    return events
+
 def load_events(filename,schema=DelphesSchema,metadict=None,with_constituents=False):
     from coffea.nanoevents import NanoEventsFactory
     if with_constituents and schema==DelphesSchema:
@@ -115,6 +155,9 @@ def load_events(filename,schema=DelphesSchema,metadict=None,with_constituents=Fa
         schemaclass=schema,
         metadata=metadict,
     ).events()
+
+    # fix missing vector behavior
+    events = setup_vectors(events)
 
     if with_constituents:
         events = init_constituents(events)
