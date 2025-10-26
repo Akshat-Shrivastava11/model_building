@@ -41,11 +41,10 @@ class DelphesSchema2(DelphesSchema):
     }
 
     # avoid weird error when adding constituents
-    # def __init__(self, base_form):
-    #     for key in list(base_form["contents"].keys()):
-    #         if "fBits" in key:
-    #             base_form["contents"].pop(key, None)
-    #     super().__init__(base_form)
+    def __init__(self, base_form):
+		# these two lists have to be kept in sync: zip, drop, unzip
+        base_form["fields"], base_form["contents"] = zip(*[entry for entry in zip(base_form["fields"], base_form["contents"]) if not "fBits" in entry[0]])
+        super().__init__(base_form)
 
 # ignore unnecessary warning
 from numba.core.errors import NumbaTypeSafetyWarning
