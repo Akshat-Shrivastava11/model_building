@@ -436,6 +436,11 @@ class svjHelper(baseHelper):
                 # fermionic dark quark
                 '4900101:m0 = {:g}'.format(self.mq),
             ],
+            'snowmass_cmslike' : [
+                # fermionic dark quark
+                '4900101:m0 = {:g}'.format(self.mq),
+            ],
+
         }
 
         # for separateFlav=on, set masses of all the dark
