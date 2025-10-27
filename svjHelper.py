@@ -427,18 +427,48 @@ class svjHelper(baseHelper):
         lines_spectrum = {
             'matt' : [
                 'HiddenValley:separateFlav = on',
+                'HiddenValley:ffbar2Zv = on',
+                # parameters for leptophobic Z'
+                '4900023:m0 = {:g}'.format(self.mmed),
+                '4900023:mMin = {:g}'.format(self.mmin),
+                '4900023:mMax = {:g}'.format(self.mmax),
+                '4900023:mWidth = 0.01',
             ],
             'cms' : [
                 # fermionic dark quark
                 '4900101:m0 = {:g}'.format(self.mq),
+                'HiddenValley:ffbar2Zv = on',
+                # parameters for leptophobic Z'
+                '4900023:m0 = {:g}'.format(self.mmed),
+                '4900023:mMin = {:g}'.format(self.mmin),
+                '4900023:mMax = {:g}'.format(self.mmax),
+                '4900023:mWidth = 0.01',
+                '4900023:oneChannel = 1 0.982 102 4900101 -4900101',
+
             ],
             'snowmass' : [
                 # fermionic dark quark
                 '4900101:m0 = {:g}'.format(self.mq),
+                'HiddenValley:ffbar2Zv = on',
+                # parameters for leptophobic Z'
+                '4900023:m0 = {:g}'.format(self.mmed),
+                '4900023:mMin = {:g}'.format(self.mmin),
+                '4900023:mMax = {:g}'.format(self.mmax),
+                '4900023:mWidth = 0.01',
+                '4900023:oneChannel = 1 0.982 102 4900101 -4900101',
+
             ],
             'snowmass_cmslike' : [
                 # fermionic dark quark
                 '4900101:m0 = {:g}'.format(self.mq),
+                'HiddenValley:ffbar2Zv = on',
+                # parameters for leptophobic Z'
+                '4900023:m0 = {:g}'.format(self.mmed),
+                '4900023:mMin = {:g}'.format(self.mmin),
+                '4900023:mMax = {:g}'.format(self.mmax),
+                '4900023:mWidth = 0.01',
+                '4900023:oneChannel = 1 0.982 102 4900101 -4900101',
+
             ],
 
         }
@@ -447,15 +477,15 @@ class svjHelper(baseHelper):
         for i in range(1, self.Nf+1):
             lines_spectrum['matt'].append('490010{:g}:m0 = {:g}'.format(i, self.mq))
 
+        #divide up Z' BF betwee the Nf quarks
+        bf = 0.982 / self.Nf
+        for i in range(1, self.Nf+1):
+            if i==1: line = '4900023:oneChannel = 1 {:3f} 102 490010{:g} -490010{:g}'.format(bf, i, i)
+            else: line = '4900023:addChannel = 1 {:3f} 102 490010{:g} -490010{:g}'.format(bf, i, i)
+            lines_spectrum['matt'].append(line)
+
         lines_channel = {
             's': [
-                'HiddenValley:ffbar2Zv = on',
-                # parameters for leptophobic Z'
-                '4900023:m0 = {:g}'.format(self.mmed),
-                '4900023:mMin = {:g}'.format(self.mmin),
-                '4900023:mMax = {:g}'.format(self.mmax),
-                '4900023:mWidth = 0.01',
-                '4900023:oneChannel = 1 0.982 102 4900101 -4900101',
                 # SM quark couplings needed to produce Zprime from pp initial state
                 '4900023:addChannel = 1 0.003 102 1 -1',
                 '4900023:addChannel = 1 0.003 102 2 -2',
