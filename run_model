@@ -49,7 +49,7 @@ if __name__=="__main__":
     parsers = {}
     model_groups = {}
     for model_type in helpers.keys():
-        parsers[model_type] = subparsers.add_parser(model_type, config_options=MagiConfigOptions(), parents=[_parser_common])
+        parsers[model_type] = subparsers.add_parser(model_type, config_options=MagiConfigOptions(obj_args = ['-O', '--obj']), parents=[_parser_common])
         model_groups[model_type] = parsers[model_type].add_argument_group("model")
         helpers[model_type].add_arguments(model_groups[model_type])
         parsers[model_type].set_defaults(model_type=model_type)

@@ -13,24 +13,12 @@ def scale_cms(*, mpi):
 def mq_snowmass(*, mpi, scale):
     return (mpi/5.5)**2/scale
 
-# current quark mass, 2203.09503 eq. 14
-def mq_matt(*, mpi, scale):
-    return (mpi/5.5)**2/scale
-
 # constituent quark mass (used in Pythia), 2203.09503 Section 4.1.4
 def mqconst_snowmass(*, mpi, scale):
     return mq_snowmass(mpi=mpi, scale=scale) + scale
 
-# constituent quark mass (used in Pythia), 2203.09503 Section 4.1.4
-def mqconst_matt(*, mpi, scale):
-    return mq_matt(mpi=mpi, scale=scale) + scale
-
 # 2203.09503 eq. 14
 def mrho_snowmass(*, mpi, scale):
-    return scale*math.sqrt(5.76+1.5*mpi**2/scale**2)
-
-# 2203.09503 eq. 14
-def mrho_matt(*, mpi, scale):
     return scale*math.sqrt(5.76+1.5*mpi**2/scale**2)
 
 # combining these into snowmass mass scheme
@@ -39,14 +27,6 @@ def masses_snowmass(*, config, scale, mpi_over_scale):
     config.mpi = mpi_over_scale * scale
     config.mq = mqconst_snowmass(mpi=config.mpi, scale=config.scale)
     config.mrho = mrho_snowmass(mpi=config.mpi, scale=config.scale)
-    return config
-
-# combining these into snowmass mass scheme
-def masses_matt(*, config, scale, mpi_over_scale):
-    config.scale = scale
-    config.mpi = mpi_over_scale * scale
-    config.mq = mqconst_matt(mpi=config.mpi, scale=config.scale)
-    config.mrho = mrho_matt(mpi=config.mpi, scale=config.scale)
     return config
 
 # classes for helper
@@ -457,6 +437,8 @@ class svjHelper(baseHelper):
         params = [self._param_name(p) for p in self.always_included]
         if self.rinv is not None:
             params.append(self._param_name("rinv"))
+        if self.Ns is not None:
+            params.append(self._param_name("Ns"))
         _name = '_'.join(params)
         return _name
 
