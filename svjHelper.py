@@ -302,7 +302,7 @@ class hvSpectrum():
         ]
         return self.lines_spectrum
 
-    def mattSpectrum(self, helper):
+    def fcdcSpectrum(self, helper):
         self.lines_spectrum['customLines'] = getattr(self, helper.channel+'ChannelSeparateFlav')(helper)
 
         #meson names are pivij and rhovij, where i = j are the flavour-diagonal mesons
