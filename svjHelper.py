@@ -222,31 +222,24 @@ class darkHadron():
         return lines
 
 class hvSpectrum():
-    def __init__(self):
+    def __init__(self, name, helper):
         self.lines_spectrum = {'customLines': [], 'darkHadrons': []}
+        self._bDark = 0.982
+        self.separateFlav = False
 
-    def populate(self, name, helper):
         if not hasattr(self, name+'Spectrum'):
             raise ValueError("unknown spectrum {}".format(name))
-        return getattr(self, name+'Spectrum')(helper)
+        getattr(self, name+'Spectrum')(helper)
+
+    def channelLines(self, helper):
+        if helper.channel=='s':
+            return self.sChannel(helper)
+        else:
+            raise ValueError(f"Unknown channel {helper.channel}")
 
     # helper for common leptophobic Z' lines
-    def sChannelNoSeparateFlav(self, helper):
+    def sChannel(self, helper):
         lines = [
-            # fermionic dark quark
-            '4900101:m0 = {:g}'.format(helper.mq),
-            # parameters for leptophobic Z'
-            '4900023:m0 = {:g}'.format(helper.mmed),
-            '4900023:mMin = {:g}'.format(helper.mmin),
-            '4900023:mMax = {:g}'.format(helper.mmax),
-            '4900023:mWidth = 0.01',
-            '4900023:oneChannel = 1 0.982 102 4900101 -4900101',
-        ]
-        return lines
-
-    def sChannelSeparateFlav(self, helper):
-        lines = [
-            'HiddenValley:separateFlav = on',
             # parameters for leptophobic Z'
             '4900023:m0 = {:g}'.format(helper.mmed),
             '4900023:mMin = {:g}'.format(helper.mmin),
@@ -254,16 +247,29 @@ class hvSpectrum():
             '4900023:mWidth = 0.01',
         ]
 
-        # for separateFlav=on, set masses of all the dark
-        for i in range(1, helper.Nf+1):
-            lines.append('490010{:g}:m0 = {:g}'.format(i, helper.mq))
+        if not self.separateFlav:
+            lines.extend([
+                # fermionic dark quark
+                '4900101:m0 = {:g}'.format(helper.mq),
+                # parameters for leptophobic Z'
+                '4900023:oneChannel = 1 {} 102 4900101 -4900101'.format(self._bDark),
+            ])
+        else:
+            lines.extend([
+                'HiddenValley:separateFlav = on',
+            ])
 
-        #divide up Z' BF betwee the Nf quarks
-        bf = 0.982 / helper.Nf
-        for i in range(1, helper.Nf+1):
-            if i==1: line = '4900023:oneChannel = 1 {:3f} 102 490010{:g} -490010{:g}'.format(bf, i, i)
-            else: line = '4900023:addChannel = 1 {:3f} 102 490010{:g} -490010{:g}'.format(bf, i, i)
-            lines.append(line)
+            # for separateFlav=on, set masses of all the dark
+            for i in range(1, helper.Nf+1):
+                lines.append('490010{:g}:m0 = {:g}'.format(i, helper.mq))
+
+            # divide up Z' BF between the Nf quarks
+            bf = self._bDark / helper.Nf
+            for i in range(1, helper.Nf+1):
+                if i==1: line = '4900023:oneChannel = 1 {:3f} 102 490010{:g} -490010{:g}'.format(bf, i, i)
+                else: line = '4900023:addChannel = 1 {:3f} 102 490010{:g} -490010{:g}'.format(bf, i, i)
+                lines.append(line)
+
         return lines
 
     # helper for common invisible particles
@@ -275,7 +281,7 @@ class hvSpectrum():
         ]
 
     def cmsSpectrum(self, helper):
-        self.lines_spectrum['customLines'] = getattr(self, helper.channel+'ChannelNoSeparateFlav')(helper)
+        self.lines_spectrum['customLines'] = self.channelLines(helper)
         self.lines_spectrum['darkHadrons'] = self.dmForRinv() + [
             darkHadron(4900111,helper.mpi,'massInsertion',rinv=helper.rinv,dm=51),
             darkHadron(4900211,helper.mpi,'massInsertion',rinv=helper.rinv,dm=51),
@@ -284,7 +290,7 @@ class hvSpectrum():
         ]
 
     def snowmassSpectrum(self, helper):
-        self.lines_spectrum['customLines'] = getattr(self, helper.channel+'ChannelNoSeparateFlav')(helper)
+        self.lines_spectrum['customLines'] = self.channelLines(helper)
         self.lines_spectrum['darkHadrons'] = self.dmForRinv() + [
             darkHadron(4900111,helper.mpi,'massInsertion',rinv=helper.rinv,dm=53),
             darkHadron(4900211,helper.mpi,'stable'),
@@ -293,17 +299,17 @@ class hvSpectrum():
         ]
 
     def snowmass_cmslikeSpectrum(self, helper):
-        self.lines_spectrum['customLines'] = getattr(self, helper.channel+'ChannelNoSeparateFlav')(helper)
+        self.lines_spectrum['customLines'] = self.channelLines(helper)
         self.lines_spectrum['darkHadrons'] = self.dmForRinv() + [
             darkHadron(4900111,helper.mpi,'massInsertion',rinv=helper.rinv,dm=53),
             darkHadron(4900211,helper.mpi,'massInsertion',rinv=helper.rinv,dm=53),
             darkHadron(4900113,helper.mrho,'darkPion',decay_args=[4900211,-4900211]),
             darkHadron(4900213,helper.mrho,'darkPion',decay_args=[4900111,4900211]),
         ]
-        return self.lines_spectrum
 
     def fcdcSpectrum(self, helper):
-        self.lines_spectrum['customLines'] = getattr(self, helper.channel+'ChannelSeparateFlav')(helper)
+        self.separateFlav = True
+        self.lines_spectrum['customLines'] = self.channelLines(helper)
 
         #meson names are pivij and rhovij, where i = j are the flavour-diagonal mesons
         #else i > j, with j representing the antiquark.
@@ -335,7 +341,6 @@ class hvSpectrum():
                     hadronLines.append(darkHadron(pid_vector,helper.mrho,'darkRho', Nf=helper.Nf))
 
         self.lines_spectrum['darkHadrons'] = self.dmForRinv() + hadronLines
-        return self.lines_spectrum
 
 class baseHelper():
     @staticmethod
@@ -393,7 +398,7 @@ class svjHelper(baseHelper):
         parser.add_argument("--mmed",type=float,required=True,help="mediator mass [GeV]")
         parser.add_argument("--Nc",type=int,required=True,help="number of dark colors")
         parser.add_argument("--Nf",type=int,required=True,help="number of dark flavors")
-        parser.add_argument("--Ns",type=int,default=None,help="number of stable dark quarks")
+        parser.add_argument("--Ns",type=int,default=None,help='number of sterile ("stable") dark quarks')
         parser.add_argument("--scale",type=float,required=True,help="dark force scale Lambda [GeV]")
         parser.add_argument("--mq",type=float,required=True,help="dark quark mass [GeV]")
         parser.add_argument("--mpi",type=float,required=True,help="dark pion mass [GeV]")
@@ -416,8 +421,9 @@ class svjHelper(baseHelper):
         self.mmax = self.mmed+1
 
         # set up spectrum
-        self.customSpectrum = hvSpectrum().populate(self.spectrum, self)['customLines']
-        self.spectrumParticles = hvSpectrum().populate(self.spectrum, self)['darkHadrons']
+        spectrumHelper = hvSpectrum(self.spectrum, self)
+        self.customSpectrum = spectrumHelper.lines_spectrum['customLines']
+        self.spectrumParticles = spectrumHelper.lines_spectrum['darkHadrons']
         self.darkHadronIDs = [dh.id for dh in self.spectrumParticles if not dh.placeholder]
         self.darkHadronFinalIDs = [dh.id for dh in self.spectrumParticles if not dh.placeholder and dh.decay!='darkPion']
         self.stableIDs = [dh.id for dh in self.spectrumParticles if dh.decay=='stable']
