@@ -253,6 +253,9 @@ class hvSpectrum():
                 '4900101:m0 = {:g}'.format(helper.mq),
                 # parameters for leptophobic Z'
                 '4900023:oneChannel = 1 {} 102 4900101 -4900101'.format(self._bDark),
+                # define missing antiparticles
+                '4900111:antiName = pivDiagbar',
+                '4900113:antiName = rhovDiagbar',
             ])
         else:
             lines.extend([
@@ -321,11 +324,16 @@ class hvSpectrum():
         #Assume mrho > 2mpi
 
         hadronLines = []
+        antiLines = []
         for i in range(1, helper.Nf+1):
             for j in range(1, helper.Nf+1):
                 if i < j: continue
-                pid_scalar = int('4900' + str(i) + str(j) + '1')
-                pid_vector = int('4900' + str(i) + str(j) + '3')
+                pid_scalar = int(f'4900{i}{j}1')
+                pid_vector = int(f'4900{i}{j}3')
+                antiLines.extend([
+                    f'{pid_scalar}:antiName = piv{i}{j}bar',
+                    f'{pid_vector}:antiName = rhov{i}{j}bar',
+                ])
                 if i == j:
                     # diagonal scalar unstable
                     hadronLines.append(darkHadron(pid_scalar,helper.mpi,'massInsertion'))
@@ -341,6 +349,7 @@ class hvSpectrum():
                     hadronLines.append(darkHadron(pid_vector,helper.mrho,'darkRho', Nf=helper.Nf))
 
         self.lines_spectrum['darkHadrons'] = self.dmForRinv() + hadronLines
+        self.lines_spectrum['customLines'] += antiLines
 
 class baseHelper():
     @staticmethod
