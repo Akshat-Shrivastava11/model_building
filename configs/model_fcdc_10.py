@@ -6,7 +6,7 @@ common = MagiConfig()
 common.channel = 's'
 common.mmed = 1000
 common.pvector = 0.5
-common.spectrum = 'matt'
+common.spectrum = 'fcdc'
 common = masses_snowmass(config=common,scale=10,mpi_over_scale=0.6)
 
 # generate new configs for each input
