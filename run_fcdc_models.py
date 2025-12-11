@@ -1,15 +1,18 @@
-import os, sys
+import os, sys, imp
+
+config_dir = os.path.join(os.getcwd(), "configs")
+sys.path.append(config_dir)
 
 nEvents = 1000
-path = 'configs/fcdc/'
-sys.path.append(os.path.dirname(sys.path[0]+'/'+path))
+config_name = "configs/model_fcdc_10.py"
+path = os.path.join(config_dir, "fcdc")
+configs_fcdc = imp.load_source("configs_fcdc", config_name)
+prefix = "config"
+objs = [obj for obj in dir(configs_fcdc) if obj.startswith(prefix) and len(obj)>len(prefix)]
 
-files = [f for f in os.listdir(path) if os.path.isfile(path+f) and ('base' not in f) and ('make' not in f)]
-
-for f in files:
-    logName = f.replace('.py','')
-    print(f)
-    print(logName)
-    cmd = './run_model helper -C {:s} --dir models/fcdc --steps all --events 1000 --verbose > models/fcdc/{:s}.log'.format(path+f, logName)
+for obj in objs:
+    logName = obj.replace(prefix,"model_")
+    print(obj)
+    cmd = f'./run_model helper -C {config_name} -O {obj} --dir models/fcdc --steps all --events {nEvents} --verbose > models/fcdc/{logName}.log'
     print(cmd)
     os.system(cmd)

@@ -19,5 +19,3 @@ for Nf_val in range(Nf_min,Nf_max+1):
     for Ns_val in range(Ns_min, Ns_max+1):
         globals()['configNc{:d}Nf{:d}Ns{:d}'.format(Nf_val, Nf_val, Ns_val)] = MagiConfig(Nc=Nf_val, Nf=Nf_val, Ns=Ns_val)
         globals()['configNc{:d}Nf{:d}Ns{:d}'.format(Nf_val, Nf_val, Ns_val)].join(common)
-
-config = globals()['configNc3Nf3Ns1']
