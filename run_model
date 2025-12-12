@@ -110,7 +110,7 @@ if __name__=="__main__":
     if 'pythia' in args["common"].steps:
         # step 1: pythia
         log_fname = "log_pythia8.log"
-        pythia_exe = os.path.expandvars("$PYTHIA8/examples/main42")
+        pythia_exe = os.path.expandvars("$PYTHIA8RUNNER")
         pythia_cmd = f'{pythia_exe} {pythia_fname} {hepmc_fname}'
         if not args["common"].quiet: print(f'Running Pythia ({log_fname})')
         run_cmd(pythia_cmd, log_fname, args["common"].verbose)
