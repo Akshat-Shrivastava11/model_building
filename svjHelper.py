@@ -202,6 +202,12 @@ class darkHadron():
         return int(antiQuarkIndex)
 
     def darkRhoDecay(self):
+        if self.mass > 2*self.helper.mpi:
+            return self.darkRho2BodyDecay()
+        else:
+            raise RuntimeError("3-body decays not implemented yet")
+
+    def darkRho2BodyDecay(self):
         lines = []
         # equal branching fraction to all dark quark flavors
         branching_fraction = 1/ self.helper.Nf
