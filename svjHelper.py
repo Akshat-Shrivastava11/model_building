@@ -32,7 +32,7 @@ def masses_snowmass(*, config, scale, mpi_over_scale):
 # classes for helper
 
 class quark(object):
-    def __init__(self,id,mass):
+    def __init__(self,*,id,mass):
         self.id = id
         self.mass = mass
         self.massrun = mass
@@ -82,11 +82,11 @@ class quarklist(object):
         # using Pythia masses
         # would be nice to get these directly from Pythia to ensure consistency
         self.qlist = [
-            quark(1,0.33), # down
-            quark(2,0.33), # up
-            quark(3,0.5),  # strange
-            quark(4,1.5),  # charm
-            quark(5,4.8),  # bottom
+            quark(id=1,mass=0.33), # down
+            quark(id=2,mass=0.33), # up
+            quark(id=3,mass=0.5),  # strange
+            quark(id=4,mass=1.5),  # charm
+            quark(id=5,mass=4.8),  # bottom
         ]
         self.scale = None
         self.runner = massRunner()
@@ -119,12 +119,12 @@ class quarklist(object):
         return [q for q in self.qlist if (q.active if active else q.on)]
 
 class darkHadron():
-    def __init__(self, id, mass, decay, props=[], rinv=None, dm=None, decay_args=None, Nf=None, placeholder=False):
+    def __init__(self, helper, *, id, mass, decay, props=[], rinv=None, dm=None, decay_args=None, placeholder=False):
         self.id = id
         self.mass = mass
         self.decay = decay
         self.decay_args = decay_args
-        self.Nf = Nf
+        self.helper = helper
         self.props = props
         self.placeholder = placeholder
         if not hasattr(self, self.decay+'Decay'):
@@ -204,11 +204,11 @@ class darkHadron():
     def darkRhoDecay(self):
         lines = []
         # equal branching fraction to all dark quark flavors
-        branching_fraction = 1/ self.Nf
+        branching_fraction = 1/ self.helper.Nf
         darkQuarkFromRho = self.getDarkQuark()
         antiDarkQuarkFromRho = self.getAntiDarkQuark()
 
-        for n in range(1,self.Nf+1):
+        for n in range(1,self.helper.Nf+1):
             # I don't really like this so I will try to come up with a better way but for now I think it is at least correct
             if n > darkQuarkFromRho:
                 decay1 = -1 * int('4900{:d}{:d}1'.format(n, darkQuarkFromRho) )
@@ -276,38 +276,38 @@ class hvSpectrum():
         return lines
 
     # helper for common invisible particles
-    def dmForRinv(self):
+    def dmForRinv(self, helper):
         return [
-            darkHadron(51,0.0,'stable',props=['isResonance = false'],placeholder=True),
-            darkHadron(52,0.0,'stable',props=['isResonance = false'],placeholder=True),
-            darkHadron(53,0.0,'stable',props=['isResonance = false'],placeholder=True),
+            darkHadron(helper,id=51,mass=0.0,decay='stable',props=['isResonance = false'],placeholder=True),
+            darkHadron(helper,id=52,mass=0.0,decay='stable',props=['isResonance = false'],placeholder=True),
+            darkHadron(helper,id=53,mass=0.0,decay='stable',props=['isResonance = false'],placeholder=True),
         ]
 
     def cmsSpectrum(self, helper):
         self.lines_spectrum['customLines'] = self.channelLines(helper)
-        self.lines_spectrum['darkHadrons'] = self.dmForRinv() + [
-            darkHadron(4900111,helper.mpi,'massInsertion',rinv=helper.rinv,dm=51),
-            darkHadron(4900211,helper.mpi,'massInsertion',rinv=helper.rinv,dm=51),
-            darkHadron(4900113,helper.mrho,'democratic',rinv=helper.rinv,dm=53),
-            darkHadron(4900213,helper.mrho,'democratic',rinv=helper.rinv,dm=53),
+        self.lines_spectrum['darkHadrons'] = self.dmForRinv(helper) + [
+            darkHadron(helper,id=4900111,mass=helper.mpi,decay='massInsertion',rinv=helper.rinv,dm=51),
+            darkHadron(helper,id=4900211,mass=helper.mpi,decay='massInsertion',rinv=helper.rinv,dm=51),
+            darkHadron(helper,id=4900113,mass=helper.mrho,decay='democratic',rinv=helper.rinv,dm=53),
+            darkHadron(helper,id=4900213,mass=helper.mrho,decay='democratic',rinv=helper.rinv,dm=53),
         ]
 
     def snowmassSpectrum(self, helper):
         self.lines_spectrum['customLines'] = self.channelLines(helper)
-        self.lines_spectrum['darkHadrons'] = self.dmForRinv() + [
-            darkHadron(4900111,helper.mpi,'massInsertion',rinv=helper.rinv,dm=53),
-            darkHadron(4900211,helper.mpi,'stable'),
-            darkHadron(4900113,helper.mrho,'darkPion',decay_args=[4900211,-4900211]),
-            darkHadron(4900213,helper.mrho,'darkPion',decay_args=[4900111,4900211]),
+        self.lines_spectrum['darkHadrons'] = self.dmForRinv(helper) + [
+            darkHadron(helper,id=4900111,mass=helper.mpi,decay='massInsertion',rinv=helper.rinv,dm=53),
+            darkHadron(helper,id=4900211,mass=helper.mpi,decay='stable'),
+            darkHadron(helper,id=4900113,mass=helper.mrho,decay='darkPion',decay_args=[4900211,-4900211]),
+            darkHadron(helper,id=4900213,mass=helper.mrho,decay='darkPion',decay_args=[4900111,4900211]),
         ]
 
     def snowmass_cmslikeSpectrum(self, helper):
         self.lines_spectrum['customLines'] = self.channelLines(helper)
-        self.lines_spectrum['darkHadrons'] = self.dmForRinv() + [
-            darkHadron(4900111,helper.mpi,'massInsertion',rinv=helper.rinv,dm=53),
-            darkHadron(4900211,helper.mpi,'massInsertion',rinv=helper.rinv,dm=53),
-            darkHadron(4900113,helper.mrho,'darkPion',decay_args=[4900211,-4900211]),
-            darkHadron(4900213,helper.mrho,'darkPion',decay_args=[4900111,4900211]),
+        self.lines_spectrum['darkHadrons'] = self.dmForRinv(helper) + [
+            darkHadron(helper,id=4900111,mass=helper.mpi,decay='massInsertion',rinv=helper.rinv,dm=53),
+            darkHadron(helper,id=4900211,mass=helper.mpi,decay='massInsertion',rinv=helper.rinv,dm=53),
+            darkHadron(helper,id=4900113,mass=helper.mrho,decay='darkPion',decay_args=[4900211,-4900211]),
+            darkHadron(helper,id=4900213,mass=helper.mrho,decay='darkPion',decay_args=[4900111,4900211]),
         ]
 
     def fcdcSpectrum(self, helper):
@@ -336,17 +336,17 @@ class hvSpectrum():
                 ])
                 if i == j:
                     # diagonal scalar unstable
-                    hadronLines.append(darkHadron(pid_scalar,helper.mpi,'massInsertion'))
+                    hadronLines.append(darkHadron(helper,id=pid_scalar,mass=helper.mpi,decay='massInsertion'))
                     # diagonal vector unstable
                     # decays to stable non-diagonal scalars? which ones? 4900211,4900311?
-                    hadronLines.append(darkHadron(pid_vector,helper.mrho,'darkRho', Nf=helper.Nf))
+                    hadronLines.append(darkHadron(helper,id=pid_vector,mass=helper.mrho,decay='darkRho'))
                 else:
                     # only stable if carrying a stable quark... first Ns quarks are stable
                     if i <= helper.Ns or j<= helper.Ns:
-                        hadronLines.append(darkHadron(pid_scalar,helper.mpi,'stable'))
+                        hadronLines.append(darkHadron(helper,id=pid_scalar,mass=helper.mpi,decay='stable'))
                     else:
-                        hadronLines.append(darkHadron(pid_scalar,helper.mpi,'massInsertion'))
-                    hadronLines.append(darkHadron(pid_vector,helper.mrho,'darkRho', Nf=helper.Nf))
+                        hadronLines.append(darkHadron(helper,id=pid_scalar,mass=helper.mpi,decay='massInsertion'))
+                    hadronLines.append(darkHadron(helper,id=pid_vector,mass=helper.mrho,decay='darkRho'))
 
         self.lines_spectrum['darkHadrons'] = self.dmForRinv() + hadronLines
         self.lines_spectrum['customLines'] += antiLines
