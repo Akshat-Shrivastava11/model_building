@@ -354,7 +354,7 @@ class hvSpectrum():
                         hadronLines.append(darkHadron(helper,id=pid_scalar,mass=helper.mpi,decay='massInsertion'))
                     hadronLines.append(darkHadron(helper,id=pid_vector,mass=helper.mrho,decay='darkRho'))
 
-        self.lines_spectrum['darkHadrons'] = self.dmForRinv() + hadronLines
+        self.lines_spectrum['darkHadrons'] = self.dmForRinv(helper) + hadronLines
         self.lines_spectrum['customLines'] += antiLines
 
 class baseHelper():
