@@ -354,20 +354,34 @@ class hvChannel():
 
         # divide up Z' BF between the Nf quarks
         bf = self._bDark / self.helper.Nf
+        dark_quarks = []
         for i in range(1, self.helper.Nf+1):
-            if i==1: line = '4900023:oneChannel = 1 {:3f} 102 490010{:g} -490010{:g}'.format(bf, i, i)
-            else: line = '4900023:addChannel = 1 {:3f} 102 490010{:g} -490010{:g}'.format(bf, i, i)
+            dq = f'490010{i}'
+            dark_quarks.append(dq)
+            if i==1: line = f'4900023:oneChannel = 1 {bf:3f} 102 {dq} -{dq}'
+            else: line = f'4900023:addChannel = 1 {bf:3f} 102 {dq} -{dq}'
             self.customLines.append(line)
 
+        # SM quark couplings needed to produce Zprime from pp initial state
         self.customLines.extend([
-            # SM quark couplings needed to produce Zprime from pp initial state
             '4900023:addChannel = 1 0.003 102 1 -1',
             '4900023:addChannel = 1 0.003 102 2 -2',
             '4900023:addChannel = 1 0.003 102 3 -3',
             '4900023:addChannel = 1 0.003 102 4 -4',
             '4900023:addChannel = 1 0.003 102 5 -5',
             '4900023:addChannel = 1 0.003 102 6 -6',
-            # decouple
+        ])
+
+        # only save events with Zprime -> dark quarks
+        self.customLines.extend([
+            'AllowResonanceDecays:filter = on',
+            'AllowResonanceDecays:absID = on',
+            'AllowResonanceDecays:mothers = {4900023}',
+            f'AllowResonanceDecays:daughters = {{{",".join(dark_quarks)}}}',
+        ])
+
+        # decouple t-channel mediator particles
+        self.customLines.extend([
             '4900001:m0 = 10000',
             '4900002:m0 = 10000',
             '4900003:m0 = 10000',
