@@ -525,10 +525,6 @@ class svjHelper(baseHelper):
             if self.rinv<0 or self.rinv>1:
                 raise ValueError(f'rinv {self.rinv} not allowed (0 <= rinv <= 1)')
 
-        # make this width more realistic based on couplings?
-        self.mmin = self.mmed-1
-        self.mmax = self.mmed+1
-
         # set up production channel
         self.channelHelper = hvChannel(self.channel, self)
         self.channelLines = self.channelHelper.customLines
