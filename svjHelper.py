@@ -1,6 +1,7 @@
 import math, os
 from string import Template
 from pathlib import Path
+from magiconfig import MagiConfig
 
 # utilities for simple calculations
 
@@ -33,6 +34,27 @@ def masses_snowmass(*, config, scale, mpi_over_scale):
 # (accounting for dark flavor and dark color)
 def gchi_lhcdm(*, gDM, Nc, Nf):
     return gDM/math.sqrt(Nc*Nf)
+
+# create a single fcdc config using input numbers
+def fcdc_config(*, common, Nc, Nf, Ns):
+    configName = 'Nc{:d}Nf{:d}Ns{:d}'.format(Nc, Nf, Ns)
+    config = MagiConfig(Nc=Nc, Nf=Nf, Ns=Ns, gchi=gchi_lhcdm(gDM=1.0, Nc=Nc, Nf=Nf))
+    config.join(common)
+    return configName, config
+
+# create spread of fcdc configs for Nc=Nf case
+def fcdc_configs_NcNf1(*, common):
+    Nf_min = 3
+    Nf_max = 8
+    Ns_min = 1
+
+    config = MagiConfig()
+    for Nf_val in range(Nf_min,Nf_max+1):
+        Ns_max = Nf_val - 2
+        for Ns_val in range(Ns_min, Ns_max+1):
+            this_name, this_config = fcdc_config(common=common, Nc=Nf_val, Nf=Nf_val, Ns=Ns_val)
+            setattr(config, this_name, this_config)
+    return config
 
 # classes for helper
 
@@ -211,7 +233,7 @@ class darkHadron():
         if self.mass > 2*self.helper.mpi:
             return self.darkRho2BodyDecay()
         else:
-            raise RuntimeError("3-body decays not implemented yet")
+            return self.darkRho3BodyDecay()
 
     def darkRho2BodyDecay(self):
         lines = []
@@ -232,6 +254,24 @@ class darkHadron():
                 decay2 = -1 * int('4900{:d}{:d}1'.format(antiDarkQuarkFromRho, n) )
             lines.append('{:d}:addChannel = 1 {:03f} 101 {:d} {:d}'.format(self.id, branching_fraction, decay1, decay2))
         return lines
+
+    def darkRho3BodyDecay(self):
+        darkQuarkFromRho = self.getDarkQuark()
+        antiDarkQuarkFromRho = self.getAntiDarkQuark()
+
+        # same-flavor rho: democratic decay
+        if darkQuarkFromRho==antiDarkQuarkFromRho:
+            return self.democraticDecay()
+
+        # different-flavor rho: 3-body decay
+        else:
+            darkPion = '4900{:d}{:d}1'.format(darkQuarkFromRho, antiDarkQuarkFromRho)
+            # decay to Zprime, let Pythia figure out off-shell and branchings
+            return [
+                '{:d}:isResonance = true'.format(self.id),
+                '{:d}:oneChannel = 1 0 101 53 -53'.format(self.id, darkPion),
+                '{:d}:addChannel = 1 1 101 {} 4900023'.format(self.id, darkPion)
+            ]
 
 class hvSpectrum():
     def __init__(self, name, helper):
