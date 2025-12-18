@@ -266,12 +266,13 @@ class darkHadron():
         # different-flavor rho: 3-body decay
         else:
             darkPion = '4900{:d}{:d}1'.format(darkQuarkFromRho, antiDarkQuarkFromRho)
-            # decay to Zprime, let Pythia figure out off-shell and branchings
-            return [
-                '{:d}:isResonance = true'.format(self.id),
-                '{:d}:oneChannel = 1 0 101 53 -53'.format(self.id, darkPion),
-                '{:d}:addChannel = 1 1 101 {} 4900023'.format(self.id, darkPion)
+            # compute allowed decays to quarks
+            self.quarks.set(self.mass - self.helper.mpi)
+            theQuarks = self.quarks.get()
+            lines = [
+                '{:d}:addChannel = 1 {:g} 101 {} {:d} -{:d}'.format(self.id,q.bf,darkPion,q.id,q.id) for q in theQuarks
             ]
+            return lines
 
 class hvSpectrum():
     def __init__(self, name, helper):
