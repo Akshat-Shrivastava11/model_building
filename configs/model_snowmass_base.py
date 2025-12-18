@@ -1,4 +1,5 @@
 from magiconfig import MagiConfig
+from svjHelper import gchi_lhcdm
 
 config = MagiConfig()
 config.channel = 's'
@@ -10,3 +11,5 @@ config.pvector = 0.5
 k = 1
 config.rinv = k/3
 config.spectrum = 'snowmass'
+config.gq = 0.25
+config.gchi = gchi_lhcdm(gDM=1.0, Nc=config.Nc, Nf=config.Nf)

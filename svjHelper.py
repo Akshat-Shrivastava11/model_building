@@ -29,6 +29,11 @@ def masses_snowmass(*, config, scale, mpi_over_scale):
     config.mrho = mrho_snowmass(mpi=config.mpi, scale=config.scale)
     return config
 
+# dark quark coupling calculation for consistency with LHC DM WG mediator width
+# (accounting for dark flavor and dark color)
+def gchi_lhcdm(*, gDM, Nc, Nf):
+    return gDM/math.sqrt(Nc*Nf)
+
 # classes for helper
 
 class quark(object):
@@ -87,6 +92,7 @@ class quarklist(object):
             quark(id=3,mass=0.5),  # strange
             quark(id=4,mass=1.5),  # charm
             quark(id=5,mass=4.8),  # bottom
+            quark(id=6,mass=173.0), # top
         ]
         self.scale = None
         self.runner = massRunner()
@@ -335,7 +341,6 @@ class hvSpectrum():
 class hvChannel():
     def __init__(self, name, helper):
         self.customLines = []
-        self._bDark = 0.982
         self.helper = helper
 
         if not hasattr(self, name+'Channel'):
@@ -343,33 +348,42 @@ class hvChannel():
         getattr(self, name+'Channel')()
 
     def sChannel(self):
+        # leading order branching fraction calculation
+        # factors of mMed/(12pi) divide out
+        # correct branching fractions -> correct Zprime width and cross section
+        quarks = quarklist()
+        quarks.set(self.helper.mmed)
+        theQuarks = quarks.get()
+        NcSM = 3
+        NfSM = len(theQuarks)
+        Wq = NcSM*NfSM*(self.helper.gq**2)
+        Wchi = self.helper.Nc*self.helper.Nf*(self.helper.gchi**2)
+        Wtot = Wq + Wchi
+        # get per-particle branching fractions
+        Bq = Wq/Wtot/NfSM
+        Bchi = Wchi/Wtot/self.helper.Nf
+        # calculate total width
+        Gtot = Wtot*self.helper.mmed/(12*math.pi)
+
         self.customLines = [
             'HiddenValley:ffbar2Zv = on',
             # parameters for leptophobic Z'
-            '4900023:m0 = {:g}'.format(self.helper.mmed),
-            '4900023:mMin = {:g}'.format(self.helper.mmin),
-            '4900023:mMax = {:g}'.format(self.helper.mmax),
-            '4900023:mWidth = 0.01',
+            f'4900023:m0 = {self.helper.mmed:g}',
+            f'4900023:mWidth = {Gtot:g}', # manual calculation
         ]
 
         # divide up Z' BF between the Nf quarks
-        bf = self._bDark / self.helper.Nf
         dark_quarks = []
         for i in range(1, self.helper.Nf+1):
             dq = f'490010{i}'
             dark_quarks.append(dq)
-            if i==1: line = f'4900023:oneChannel = 1 {bf:3f} 102 {dq} -{dq}'
-            else: line = f'4900023:addChannel = 1 {bf:3f} 102 {dq} -{dq}'
+            if i==1: line = f'4900023:oneChannel = 1 {Bchi:3f} 102 {dq} -{dq}'
+            else: line = f'4900023:addChannel = 1 {Bchi:3f} 102 {dq} -{dq}'
             self.customLines.append(line)
 
         # SM quark couplings needed to produce Zprime from pp initial state
         self.customLines.extend([
-            '4900023:addChannel = 1 0.003 102 1 -1',
-            '4900023:addChannel = 1 0.003 102 2 -2',
-            '4900023:addChannel = 1 0.003 102 3 -3',
-            '4900023:addChannel = 1 0.003 102 4 -4',
-            '4900023:addChannel = 1 0.003 102 5 -5',
-            '4900023:addChannel = 1 0.003 102 6 -6',
+            f'4900023:addChannel = 1 {Bq:3f} 102 {quark.id} -{quark.id}' for quark in theQuarks
         ])
 
         # only save events with Zprime -> dark quarks
@@ -460,6 +474,8 @@ class svjHelper(baseHelper):
         parser.add_argument("--pvector",type=float,required=True,help="probability of producing rho (vs. pion)")
         parser.add_argument("--rinv",type=float,default=None,help="invisible fraction")
         parser.add_argument("--spectrum",type=str,required=True,help="dark hadron spectrum scheme")
+        parser.add_argument("--gq",type=float,default=True,help="Zprime quark coupling")
+        parser.add_argument("--gchi",type=float,default=True,help="Zprime dark quark coupling")
 
     def __init__(self,args):
         super().__init__(args)
@@ -487,7 +503,7 @@ class svjHelper(baseHelper):
         self.stableIDs = [dh.id for dh in self.spectrumParticles if dh.decay=='stable']
 
         # metadata tracking
-        self.always_included = ["channel","mmed","Nc","Nf","scale","mq","mpi","mrho","pvector","spectrum"]
+        self.always_included = ["channel","mmed","Nc","Nf","scale","mq","mpi","mrho","pvector","spectrum","gq","gchi"]
         self.special_formats = {
             "channel": "{1}-{0}",
             "spectrum": "{}-{}",
