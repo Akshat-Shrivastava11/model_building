@@ -429,10 +429,8 @@ class hvChannel():
 
         # only save events with Zprime -> dark quarks
         self.customLines.extend([
-            'AllowResonanceDecays:filter = on',
-            'AllowResonanceDecays:absID = on',
-            'AllowResonanceDecays:mothers = {4900023}',
-            f'AllowResonanceDecays:daughters = {{{",".join(dark_quarks)}}}',
+            '4900023:onMode = off',
+            f'4900023:onIfAny = {" ".join(dark_quarks)}',
         ])
 
         # decouple t-channel mediator particles

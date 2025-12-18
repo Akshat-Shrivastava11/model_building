@@ -1,7 +1,5 @@
 #!/bin/bash
 
-BASEDIR=${PWD}
-
 PYTHIA_VERSION=pythia8310
 
 wget "https://www.pythia.org/download/pythia83/${PYTHIA_VERSION}.tgz"
@@ -18,8 +16,6 @@ make -j 8
 make install
 
 (cd examples
-mv main42.cc main42.cc.bak
-cp ${BASEDIR}/p8runner.cc main42.cc
 make main42
 )
 
