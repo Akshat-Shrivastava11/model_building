@@ -133,10 +133,25 @@ def histogram(filename, helper):
     events["Jet1_majoraxis"], events["Jet1_minoraxis"] = calc_axis1_axis2(events["Jet1"])
     events["Jet2_majoraxis"], events["Jet2_minoraxis"] = calc_axis1_axis2(events["Jet2"])
 
+    # gen-level info
+    pid = events.GenParticle["PID"]
+
+    # mediator (gen-level)
+    mmed = helper.mmed
+    mediator_id = helper.mediatorID
+    is_med = pid==mediator_id
+    meds = events.GenParticle[is_med]
+
+    # final version of mediator decays to other particles
+    # intermediate versions "decay" to same particle (radiation)
+    med_d1 = meds["D1"]
+    is_final = pid[med_d1]!=mediator_id
+    meds_final = meds[is_final][:,0]
+    events["mMediator"] = meds_final.mass
+
     # Stable inv frac
     dark_hadron_ids = helper.darkHadronFinalIDs
     stable_particle_ids = helper.stableIDs
-    pid = events.GenParticle["PID"]
     d1 = events.GenParticle["D1"]
 
     # Boolean array of whether a particle is dark
@@ -175,20 +190,20 @@ def histogram(filename, helper):
 
     # Creating hist objects
     hist_dict = {
-        "MT": fill_hist("MT",25,0,1500,r"$m_{\text{T}}$ [GeV]"),
-        "Dijet_pt": fill_hist("Dijet_pt",50,0,1000,r"$p_{\text{T}}(JJ)$ [GeV]"),
+        "MT": fill_hist("MT",50,0,mmed*1.5,r"$m_{\text{T}}$ [GeV]"),
+        "Dijet_pt": fill_hist("Dijet_pt",50,0,mmed*0.75,r"$p_{\text{T}}(JJ)$ [GeV]"),
         "Dijet_eta": fill_hist("Dijet_eta",50,-10,10,r"$\eta_{JJ}$ [GeV]"),
         "Dijet_phi": fill_hist("Dijet_phi",25,-3.15,3.15,r"$\phi_{JJ}$"),
-        "Dijet_mass": fill_hist("Dijet_mass",50,0,2300,r"$m_{JJ}$ [GeV]"),
-        "Jet1_pt": fill_hist("Jet1_pt",50,0,1000,r"$p_{\text{T}}(J_1)$ [GeV]"),
-        "Jet2_pt": fill_hist("Jet2_pt",50,0,1000,r"$p_{\text{T}}(J_2)$ [GeV]"),
+        "Dijet_mass": fill_hist("Dijet_mass",50,0,mmed*1.5,r"$m_{JJ}$ [GeV]"),
+        "Jet1_pt": fill_hist("Jet1_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_1)$ [GeV]"),
+        "Jet2_pt": fill_hist("Jet2_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_2)$ [GeV]"),
         "Jet1_eta": fill_hist("Jet1_eta",50,-6,6,r"$\eta_{J_1}$"),
         "Jet2_eta": fill_hist("Jet2_eta",50,-6,6,r"$\eta_{J_2}$"),
         "Jet1_phi": fill_hist("Jet1_phi",25,-3.15,3.15,r"$\phi_{J_1}$"),
         "Jet2_phi": fill_hist("Jet2_phi",25,-3.15,3.15,r"$\phi_{J_2}$"),
         "Jet1_mass": fill_hist("Jet1_mass",50,0,250,r"$m_{J_1}$ [GeV]"),
         "Jet2_mass": fill_hist("Jet2_mass",50,0,250,r"$m_{J_2}$ [GeV]"),
-        "MET": fill_hist("MET",50,0,1000,r"$p_{\text{T}}^{\text{miss}}$ [GeV]"),
+        "MET": fill_hist("MET",50,0,mmed*0.75,r"$p_{\text{T}}^{\text{miss}}$ [GeV]"),
         "DeltaEta": fill_hist("DeltaEta",35,0,8.0,r"$\Delta\eta(JJ)$"),
         "DeltaPhi": fill_hist("DeltaPhi",20,0,3.15,r"$\Delta\phi(JJ)$"),
         "DeltaPhi_MET_Jet1": fill_hist("DeltaPhi_MET_Jet1",25,0,3.15,r"$\Delta\phi(J_1,p_{\text{T}}^{\text{miss}})$"),
@@ -201,7 +216,8 @@ def histogram(filename, helper):
         "Jet2_major": fill_hist("Jet2_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_2)$"),
         "Jet1_minor": fill_hist("Jet1_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_1)$"),
         "Jet2_minor": fill_hist("Jet2_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_2)$"),
-        "stable_invisible_fraction": fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$")
+        "stable_invisible_fraction": fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$"),
+        "mMediator": fill_hist("mMediator",50,0,mmed*1.5,r"$m_{\text{mediator}}$ [GeV]"),
     }
 
     # Saving the histograms
