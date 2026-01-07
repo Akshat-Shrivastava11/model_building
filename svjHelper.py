@@ -406,11 +406,12 @@ class hvChannel():
         # calculate total width
         Gtot = Wtot*self.helper.mmed/(12*math.pi)
 
+        self.mediatorID = 4900023
         self.customLines = [
             'HiddenValley:ffbar2Zv = on',
             # parameters for leptophobic Z'
-            f'4900023:m0 = {self.helper.mmed:g}',
-            f'4900023:mWidth = {Gtot:g}', # manual calculation
+            f'{self.mediatorID}:m0 = {self.helper.mmed:g}',
+            f'{self.mediatorID}:mWidth = {Gtot:g}', # manual calculation
         ]
 
         # divide up Z' BF between the Nf quarks
@@ -418,19 +419,19 @@ class hvChannel():
         for i in range(1, self.helper.Nf+1):
             dq = f'490010{i}'
             dark_quarks.append(dq)
-            if i==1: line = f'4900023:oneChannel = 1 {Bchi:3f} 102 {dq} -{dq}'
-            else: line = f'4900023:addChannel = 1 {Bchi:3f} 102 {dq} -{dq}'
+            if i==1: line = f'{self.mediatorID}:oneChannel = 1 {Bchi:3f} 102 {dq} -{dq}'
+            else: line = f'{self.mediatorID}:addChannel = 1 {Bchi:3f} 102 {dq} -{dq}'
             self.customLines.append(line)
 
         # SM quark couplings needed to produce Zprime from pp initial state
         self.customLines.extend([
-            f'4900023:addChannel = 1 {Bq:3f} 102 {quark.id} -{quark.id}' for quark in theQuarks
+            f'{self.mediatorID}:addChannel = 1 {Bq:3f} 102 {quark.id} -{quark.id}' for quark in theQuarks
         ])
 
         # only save events with Zprime -> dark quarks
         self.customLines.extend([
-            '4900023:onMode = off',
-            f'4900023:onIfAny = {" ".join(dark_quarks)}',
+            f'{self.mediatorID}:onMode = off',
+            f'{self.mediatorID}:onIfAny = {" ".join(dark_quarks)}',
         ])
 
         # decouple t-channel mediator particles
@@ -528,6 +529,7 @@ class svjHelper(baseHelper):
         # set up production channel
         self.channelHelper = hvChannel(self.channel, self)
         self.channelLines = self.channelHelper.customLines
+        self.mediatorID = self.channelHelper.mediatorID
 
         # set up spectrum
         self.spectrumHelper = hvSpectrum(self.spectrum, self)
