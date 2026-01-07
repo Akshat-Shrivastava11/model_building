@@ -9,18 +9,6 @@ from common import load_events
 def ET(vec):
     return np.sqrt(vec.px**2+vec.py**2+vec.mass**2)
 
-def get_values(var,Events):
-    return ak.flatten(Events[var],axis=None)
-
-def fill_hist(var,nbins,bmin,bmax,label,Events):
-    h = (
-        hist.Hist.new
-        .Reg(nbins, bmin, bmax, label=label)
-        .Double()
-    )
-    h.fill(get_values(var,Events))
-    return h
-
 def normalize_angle(angle):
     angle = np.mod(angle, 2 * np.pi)
     angle = np.where(angle >= np.pi, angle - 2 * np.pi, angle)
@@ -85,10 +73,9 @@ def calc_axis1_axis2(jet):
 
 
 def histogram(filename, helper):
-    Events = load_events(filename, with_constituents=True)
+    events = load_events(filename, with_constituents=True)
 
     # require two jets
-    events = Events
     mask = ak.num(events.FatJet)>=2
     events = events[mask]
 
@@ -173,41 +160,48 @@ def histogram(filename, helper):
     # Add the invisible fraction to the events
     events["stable_invisible_fraction"] = stability
 
-    # store modified events array
-    Events = events
+    # bind events into filling functions
+    def get_values(var):
+        return ak.flatten(events[var],axis=None)
 
-    # Histogram
+    def fill_hist(var,nbins,bmin,bmax,label):
+        h = (
+            hist.Hist.new
+            .Reg(nbins, bmin, bmax, label=label)
+            .Double()
+        )
+        h.fill(get_values(var))
+        return h
 
     # Creating hist objects
-
     hist_dict = {
-        "Jet_mt": fill_hist("MT",25,0,1500,r"$m_{\text{T}}$ [GeV]",Events),
-        "Dijet_pt": fill_hist("Dijet_pt",50,0,1000,r"$p_{\text{T}}(JJ)$ [GeV]",Events),
-        "Jet1_pt": fill_hist("Jet1_pt",50,0,1000,r"$p_{\text{T}}(J_1)$ [GeV]",Events),
-        "Jet2_pt": fill_hist("Jet2_pt",50,0,1000,r"$p_{\text{T}}(J_2)$ [GeV]",Events),
-        "MET": fill_hist("MET",50,0,1000,r"$p_{\text{T}}^{\text{miss}}$ [GeV]",Events),
-        "Dijet_eta": fill_hist("Dijet_eta",50,-10,10,r"$\eta_{JJ}$ [GeV]",Events),
-        "Jet1_eta": fill_hist("Jet1_eta",50,-6,6,r"$\eta_{J_1}$",Events),
-        "Jet2_eta": fill_hist("Jet2_eta",50,-6,6,r"$\eta_{J_2}$",Events),
-        "Dijet_phi": fill_hist("Dijet_phi",25,-3.15,3.15,r"$\phi_{JJ}$",Events),
-        "Jet1_phi": fill_hist("Jet1_phi",25,-3.15,3.15,r"$\phi_{J_1}$",Events),
-        "Jet2_phi": fill_hist("Jet2_phi",25,-3.15,3.15,r"$\phi_{J_2}$",Events),
-        "Dijet_mass": fill_hist("Dijet_mass",50,0,2300,r"$m_{JJ}$ [GeV]",Events),
-        "Jet1_mass": fill_hist("Jet1_mass",50,0,250,r"$m_{J_1}$ [GeV]",Events),
-        "Jet2_mass": fill_hist("Jet2_mass",50,0,250,r"$m_{J_2}$ [GeV]",Events),
-        "DeltaEta": fill_hist("DeltaEta",35,0,8.0,r"$\Delta\eta(JJ)$",Events),
-        "DeltaPhi": fill_hist("DeltaPhi",20,0,3.15,r"$\Delta\phi(JJ)$",Events),
-        "DeltaPhi_MET_Jet1": fill_hist("DeltaPhi_MET_Jet1",25,0,3.15,r"$\Delta\phi(J_1,p_{\text{T}}^{\text{miss}})$",Events),
-        "DeltaPhi_MET_Jet2": fill_hist("DeltaPhi_MET_Jet2",25,0,3.15,r"$\Delta\phi(J_2,p_{\text{T}}^{\text{miss}})$",Events),
-        "Jet1_girth": fill_hist("Jet1_girth",50,0,1,r"$g_{\text{jet}}(J_1)$",Events),
-        "Jet2_girth": fill_hist("Jet2_girth",50,0,1,r"$g_{\text{jet}}(J_2)$",Events),
-        "Jet1_ptD": fill_hist("Jet1_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_1)$",Events),
-        "Jet2_ptD": fill_hist("Jet2_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_2)$",Events),
-        "Jet1_major": fill_hist("Jet1_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_1)$",Events),
-        "Jet1_minor": fill_hist("Jet1_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_1)$",Events),
-        "Jet2_major": fill_hist("Jet2_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_2)$",Events),
-        "Jet2_minor": fill_hist("Jet2_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_2)$",Events),
-        "stable_invisible_fraction": fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$",Events)
+        "MT": fill_hist("MT",25,0,1500,r"$m_{\text{T}}$ [GeV]"),
+        "Dijet_pt": fill_hist("Dijet_pt",50,0,1000,r"$p_{\text{T}}(JJ)$ [GeV]"),
+        "Dijet_eta": fill_hist("Dijet_eta",50,-10,10,r"$\eta_{JJ}$ [GeV]"),
+        "Dijet_phi": fill_hist("Dijet_phi",25,-3.15,3.15,r"$\phi_{JJ}$"),
+        "Dijet_mass": fill_hist("Dijet_mass",50,0,2300,r"$m_{JJ}$ [GeV]"),
+        "Jet1_pt": fill_hist("Jet1_pt",50,0,1000,r"$p_{\text{T}}(J_1)$ [GeV]"),
+        "Jet2_pt": fill_hist("Jet2_pt",50,0,1000,r"$p_{\text{T}}(J_2)$ [GeV]"),
+        "Jet1_eta": fill_hist("Jet1_eta",50,-6,6,r"$\eta_{J_1}$"),
+        "Jet2_eta": fill_hist("Jet2_eta",50,-6,6,r"$\eta_{J_2}$"),
+        "Jet1_phi": fill_hist("Jet1_phi",25,-3.15,3.15,r"$\phi_{J_1}$"),
+        "Jet2_phi": fill_hist("Jet2_phi",25,-3.15,3.15,r"$\phi_{J_2}$"),
+        "Jet1_mass": fill_hist("Jet1_mass",50,0,250,r"$m_{J_1}$ [GeV]"),
+        "Jet2_mass": fill_hist("Jet2_mass",50,0,250,r"$m_{J_2}$ [GeV]"),
+        "MET": fill_hist("MET",50,0,1000,r"$p_{\text{T}}^{\text{miss}}$ [GeV]"),
+        "DeltaEta": fill_hist("DeltaEta",35,0,8.0,r"$\Delta\eta(JJ)$"),
+        "DeltaPhi": fill_hist("DeltaPhi",20,0,3.15,r"$\Delta\phi(JJ)$"),
+        "DeltaPhi_MET_Jet1": fill_hist("DeltaPhi_MET_Jet1",25,0,3.15,r"$\Delta\phi(J_1,p_{\text{T}}^{\text{miss}})$"),
+        "DeltaPhi_MET_Jet2": fill_hist("DeltaPhi_MET_Jet2",25,0,3.15,r"$\Delta\phi(J_2,p_{\text{T}}^{\text{miss}})$"),
+        "Jet1_girth": fill_hist("Jet1_girth",50,0,1,r"$g_{\text{jet}}(J_1)$"),
+        "Jet2_girth": fill_hist("Jet2_girth",50,0,1,r"$g_{\text{jet}}(J_2)$"),
+        "Jet1_ptD": fill_hist("Jet1_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_1)$"),
+        "Jet2_ptD": fill_hist("Jet2_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_2)$"),
+        "Jet1_major": fill_hist("Jet1_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_1)$"),
+        "Jet2_major": fill_hist("Jet2_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_2)$"),
+        "Jet1_minor": fill_hist("Jet1_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_1)$"),
+        "Jet2_minor": fill_hist("Jet2_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_2)$"),
+        "stable_invisible_fraction": fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$")
     }
 
     # Saving the histograms
