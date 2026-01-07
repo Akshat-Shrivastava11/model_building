@@ -71,6 +71,13 @@ def calc_axis1_axis2(jet):
 
     return axis1, axis2
 
+def getTau(events):
+    for j in ['Jet1', 'Jet2']:
+        # we have tau1 to tau5
+        for i in range(1,6):
+            events[j+'_tau{:d}'.format(i)] = events[j].Tau_5[:,i-1]
+            if i != 1: events[j+'_tau{:d}{:d}'.format(i, i-1)] = events[j+'_tau{:d}'.format(i)] / events[j+'_tau{:d}'.format(i-1)]
+    return events
 
 def histogram(filename, helper):
     events = load_events(filename, with_constituents=True)
@@ -132,6 +139,12 @@ def histogram(filename, helper):
     events["Jet2_ptD"] = calculate_ptD(events["Jet2"])
     events["Jet1_majoraxis"], events["Jet1_minoraxis"] = calc_axis1_axis2(events["Jet1"])
     events["Jet2_majoraxis"], events["Jet2_minoraxis"] = calc_axis1_axis2(events["Jet2"])
+    events["Jet1_sdmass"] = events["Jet1"].SoftDroppedJet.mass
+    events["Jet2_sdmass"] = events["Jet2"].SoftDroppedJet.mass
+    events["Jet1_sdpt"] = events["Jet1"].SoftDroppedJet.pt
+    events["Jet2_sdpt"] = events["Jet2"].SoftDroppedJet.pt
+
+    events = getTau(events)
 
     # gen-level info
     pid = events.GenParticle["PID"]
@@ -191,12 +204,12 @@ def histogram(filename, helper):
     # Creating hist objects
     hist_dict = {
         "MT": fill_hist("MT",50,0,mmed*1.5,r"$m_{\text{T}}$ [GeV]"),
-        "Dijet_pt": fill_hist("Dijet_pt",50,0,mmed*0.75,r"$p_{\text{T}}(JJ)$ [GeV]"),
+        "Dijet_pt": fill_hist("Dijet_pt",50,0,mmed*0.75,r"$p_{\text{T,JJ}}$ [GeV]"),
         "Dijet_eta": fill_hist("Dijet_eta",50,-10,10,r"$\eta_{JJ}$ [GeV]"),
         "Dijet_phi": fill_hist("Dijet_phi",25,-3.15,3.15,r"$\phi_{JJ}$"),
         "Dijet_mass": fill_hist("Dijet_mass",50,0,mmed*1.5,r"$m_{JJ}$ [GeV]"),
-        "Jet1_pt": fill_hist("Jet1_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_1)$ [GeV]"),
-        "Jet2_pt": fill_hist("Jet2_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_2)$ [GeV]"),
+        "Jet1_pt": fill_hist("Jet1_pt",50,0,mmed*0.75,r"$p_{\text{T,J_1}}$ [GeV]"),
+        "Jet2_pt": fill_hist("Jet2_pt",50,0,mmed*0.75,r"$p_{\text{T,J_2}}$ [GeV]"),
         "Jet1_eta": fill_hist("Jet1_eta",50,-6,6,r"$\eta_{J_1}$"),
         "Jet2_eta": fill_hist("Jet2_eta",50,-6,6,r"$\eta_{J_2}$"),
         "Jet1_phi": fill_hist("Jet1_phi",25,-3.15,3.15,r"$\phi_{J_1}$"),
@@ -216,9 +229,19 @@ def histogram(filename, helper):
         "Jet2_major": fill_hist("Jet2_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_2)$"),
         "Jet1_minor": fill_hist("Jet1_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_1)$"),
         "Jet2_minor": fill_hist("Jet2_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_2)$"),
+        "Jet1_sdmass": fill_hist("Jet1_sdmass",50,0,250,r"$m_{\text{SD}}(J_1)$ [GeV]"),
+        "Jet2_sdmass": fill_hist("Jet2_sdmass",50,0,250,r"$m_{\text{SD}}(J_2)$ [GeV]"),
+        "Jet1_sdpt" : fill_hist("Jet1_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T,J_1}}$ [GeV]"),
+        "Jet2_sdpt" : fill_hist("Jet2_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T,J_2}}$ [GeV]"),
         "stable_invisible_fraction": fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$"),
         "mMediator": fill_hist("mMediator",50,0,mmed*1.5,r"$m_{\text{mediator}}$ [GeV]"),
     }
+
+    for t in events.fields:
+        if 'tau' not in t: continue
+        l = t.split('_')
+        label = l[1].replace('tau', '$\\tau_{')+','+l[0].replace('et', '_')+'}$'
+        hist_dict[t] = fill_hist(t,40,0,1,label)
 
     # Saving the histograms
     with open("Hists.pkl", "wb") as out:
