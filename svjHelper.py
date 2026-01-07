@@ -407,11 +407,18 @@ class hvChannel():
         Gtot = Wtot*self.helper.mmed/(12*math.pi)
 
         self.mediatorID = 4900023
+        # cut off low mediator masses from low-momentum PDFs
+        mSigma = 5 # consistent with DMsimp monojet / LHC DM WG
+        mMinMin = 50
+        mMin = max(self.helper.mmed - Gtot*mSigma, mMinMin)
+        mMax = self.helper.mmed + Gtot*mSigma
         self.customLines = [
             'HiddenValley:ffbar2Zv = on',
             # parameters for leptophobic Z'
             f'{self.mediatorID}:m0 = {self.helper.mmed:g}',
             f'{self.mediatorID}:mWidth = {Gtot:g}', # manual calculation
+            f'{self.mediatorID}:mMin = {mMin:g}',
+            f'{self.mediatorID}:mMax = {mMax:g}',
         ]
 
         # divide up Z' BF between the Nf quarks
