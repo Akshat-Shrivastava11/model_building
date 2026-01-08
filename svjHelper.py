@@ -408,7 +408,7 @@ class hvChannel():
 
         self.mediatorID = 4900023
         # cut off low mediator masses from low-momentum PDFs
-        mSigma = 5 # consistent with DMsimp monojet / LHC DM WG
+        mSigma = 5 # following Pythia8 SLHA convention
         mMinMin = 50
         mMin = max(self.helper.mmed - Gtot*mSigma, mMinMin)
         mMax = self.helper.mmed + Gtot*mSigma
