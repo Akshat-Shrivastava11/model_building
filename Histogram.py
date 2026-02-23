@@ -1,6 +1,7 @@
 import awkward as ak
 import pickle
 import numpy as np
+from scipy import stats
 import hist
 import matplotlib as mpl
 from coffea.nanoevents import NanoEventsFactory
@@ -183,7 +184,7 @@ def histogram(filename, helper):
     numer = ak.sum(is_dark_daughter, axis=1).to_numpy().astype(float)
     denom = ak.sum(is_dark, axis=1).to_numpy().astype(float)
     stability = np.divide(numer, denom, out=np.zeros_like(numer), where=denom>0)
-    print(f"Average computed rinv value = {np.mean(stability)}")
+    print(f"Average computed rinv value = {np.mean(stability):.5} +/- {stats.sem(stability):.5}")
 
     # Add the invisible fraction to the events
     events["stable_invisible_fraction"] = stability
