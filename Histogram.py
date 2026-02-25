@@ -180,9 +180,9 @@ def histogram(filename, helper):
     for dsid in stable_particle_ids:
         is_dark_daughter = is_dark_daughter | (np.abs(dark_daughter)==dsid)
 
-    numer = ak.sum(is_dark_daughter, axis=1).to_numpy().astype(float)
-    denom = ak.sum(is_dark, axis=1).to_numpy().astype(float)
-    stability = np.divide(numer, denom, out=np.zeros_like(numer), where=denom>0)
+    numer = ak.sum(is_dark_daughter, axis=1).to_numpy()
+    denom = ak.sum(is_dark, axis=1).to_numpy()
+    stability = np.where(denom>0, numer/denom, 0)
     print(f"Average computed rinv value = {np.mean(stability):.5} ({np.std(stability):.5})")
 
     # Add the invisible fraction to the events
