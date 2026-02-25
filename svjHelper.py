@@ -269,8 +269,9 @@ class darkHadron():
             # compute allowed decays to quarks
             self.quarks.set(self.mass - self.helper.mpi)
             theQuarks = self.quarks.get()
+            bfQuarks = 1.0/float(len(theQuarks))
             lines = [
-                '{:d}:addChannel = 1 {:g} 101 {} {:d} -{:d}'.format(self.id,q.bf,darkPion,q.id,q.id) for q in theQuarks
+                '{:d}:addChannel = 1 {:g} 101 {} {:d} -{:d}'.format(self.id,bfQuarks,darkPion,q.id,q.id) for q in theQuarks
             ]
             return lines
 
@@ -378,6 +379,15 @@ class hvSpectrum():
 
         self.darkHadrons = self.dmForRinv() + hadronLines
         self.customLines += antiLines
+
+    def fcdcSimpSpectrum(self):
+        self.customLines = self.quarkLines()
+        self.darkHadrons = self.dmForRinv() + [
+            darkHadron(self.helper,id=4900111,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=53),
+            darkHadron(self.helper,id=4900211,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=53),
+            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='darkRho'),
+            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='darkRho'),
+        ]
 
 class hvChannel():
     def __init__(self, name, helper):
