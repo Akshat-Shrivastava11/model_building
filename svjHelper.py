@@ -147,11 +147,10 @@ class quarklist(object):
         return [q for q in self.qlist if (q.active if active else q.on)]
 
 class darkHadron():
-    def __init__(self, helper, *, id, mass, decay, props=[], rinv=None, dm=None, decay_args=None, placeholder=False):
+    def __init__(self, helper, *, id, mass, decay, props=[], rinv=None, dm=None, placeholder=False):
         self.id = id
         self.mass = mass
         self.decay = decay
-        self.decay_args = decay_args
         self.helper = helper
         self.props = props
         self.placeholder = placeholder
@@ -217,10 +216,6 @@ class darkHadron():
         lines = ['{:d}:addChannel = 1 {:g} 91 {:d} -{:d}'.format(self.id,q.bf,q.id,q.id) for q in theQuarks if q.bf>0]
         return lines
 
-    def darkPionDecay(self):
-        lines = ['{:d}:addChannel = 1 1 101 {:d} {:d}'.format(self.id,self.decay_args[0],self.decay_args[1])]
-        return lines
-
     def getDarkQuark(self):
         quarkIndex = str(self.id)[4]
         return int(quarkIndex)
@@ -275,6 +270,21 @@ class darkHadron():
             ]
             return lines
 
+    def darkRhoSimpDecay(self):
+        if self.mass > 2*self.helper.mpi:
+            return self.darkRho2BodySimpDecay()
+        else:
+            return self.darkRho3BodyDecay()
+
+    def darkRho2BodySimpDecay(self):
+        decay_args = []
+        if self.id==4900113:
+            decay_args = [4900211, -4900211]
+        elif self.id==4900213:
+            decay_args = [4900111, 4900211]
+        lines = ['{:d}:addChannel = 1 1 101 {:d} {:d}'.format(self.id,decay_args[0],decay_args[1])]
+        return lines
+
 class hvSpectrum():
     def __init__(self, name, helper):
         self.customLines = []
@@ -328,8 +338,8 @@ class hvSpectrum():
         self.darkHadrons = self.dmForRinv() + [
             darkHadron(self.helper,id=4900111,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=53),
             darkHadron(self.helper,id=4900211,mass=self.helper.mpi,decay='stable'),
-            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='darkPion',decay_args=[4900211,-4900211]),
-            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='darkPion',decay_args=[4900111,4900211]),
+            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='darkRhoSimp'),
+            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='darkRhoSimp'),
         ]
 
     def snowmass_cmslikeSpectrum(self):
@@ -337,8 +347,8 @@ class hvSpectrum():
         self.darkHadrons = self.dmForRinv() + [
             darkHadron(self.helper,id=4900111,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=53),
             darkHadron(self.helper,id=4900211,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=53),
-            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='darkPion',decay_args=[4900211,-4900211]),
-            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='darkPion',decay_args=[4900111,4900211]),
+            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='darkRhoSimp'),
+            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='darkRhoSimp'),
         ]
 
     def fcdcSpectrum(self):
@@ -385,8 +395,8 @@ class hvSpectrum():
         self.darkHadrons = self.dmForRinv() + [
             darkHadron(self.helper,id=4900111,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=53),
             darkHadron(self.helper,id=4900211,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=53),
-            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='darkRho'),
-            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='darkRho'),
+            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='darkRhoSimp'),
+            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='darkRhoSimp'),
         ]
 
 class hvChannel():
@@ -553,7 +563,7 @@ class svjHelper(baseHelper):
         self.spectrumLines = self.spectrumHelper.customLines
         self.spectrumParticles = self.spectrumHelper.darkHadrons
         self.darkHadronIDs = [dh.id for dh in self.spectrumParticles if not dh.placeholder]
-        self.darkHadronFinalIDs = [dh.id for dh in self.spectrumParticles if not dh.placeholder and dh.decay!='darkPion']
+        self.darkHadronFinalIDs = [dh.id for dh in self.spectrumParticles if not dh.placeholder and 'darkRho' not in dh.decay]
         self.stableIDs = [dh.id for dh in self.spectrumParticles if dh.decay=='stable']
 
         # metadata tracking
