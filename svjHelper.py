@@ -147,7 +147,7 @@ class quarklist(object):
         return [q for q in self.qlist if (q.active if active else q.on)]
 
 class darkHadron():
-    def __init__(self, helper, *, id, mass, decay, props=[], rinv=None, dm=None, placeholder=False):
+    def __init__(self, helper, *, id, mass, decay, props=[], rinv=None, dm=None, placeholder=False, auto_rinv=True):
         self.id = id
         self.mass = mass
         self.decay = decay
@@ -167,11 +167,13 @@ class darkHadron():
             self.rvis = 1
         else:
             self.rvis = 1 - self.rinv
+        self.auto_rinv = auto_rinv
 
     def getLines(self):
-        lines = ['{:d}:m0 = {:g}'.format(self.id,self.mass)]
+        lines = []
         lines += ['{:d}:'.format(self.id)+prop for prop in self.props]
-        if self.rinv is not None:
+        lines += ['{:d}:m0 = {:g}'.format(self.id,self.mass)]
+        if self.rinv is not None and self.auto_rinv:
             lines += self.invisibleDecay()
         lines += getattr(self, self.decay+'Decay')()
         # first channel should be oneChannel
@@ -228,6 +230,14 @@ class darkHadron():
         if self.mass > 2*self.helper.mpi:
             return self.darkRho2BodyDecay()
         else:
+            # if a) diagonal or b) off-diagonal but with FCDCs (unstable dark quark), rho goes directly to qq (SM) when pipi not allowed
+            return self.democraticDecay()
+
+    def darkRhoProtectedDecay(self):
+        if self.mass > 2*self.helper.mpi:
+            return self.darkRho2BodyDecay()
+        else:
+            # "protected" rho (off-diagonal, no FCDCs) can only decay through 3-body
             return self.darkRho3BodyDecay()
 
     def darkRho2BodyDecay(self):
@@ -254,27 +264,29 @@ class darkHadron():
         darkQuarkFromRho = self.getDarkQuark()
         antiDarkQuarkFromRho = self.getAntiDarkQuark()
 
-        # same-flavor rho: democratic decay
-        if darkQuarkFromRho==antiDarkQuarkFromRho:
-            return self.democraticDecay()
-
-        # different-flavor rho: 3-body decay
-        else:
-            darkPion = '4900{:d}{:d}1'.format(darkQuarkFromRho, antiDarkQuarkFromRho)
-            # compute allowed decays to quarks
-            self.quarks.set(self.mass - self.helper.mpi)
-            theQuarks = self.quarks.get()
-            bfQuarks = 1.0/float(len(theQuarks))
-            lines = [
-                '{:d}:addChannel = 1 {:g} 101 {} {:d} -{:d}'.format(self.id,bfQuarks,darkPion,q.id,q.id) for q in theQuarks
-            ]
-            return lines
+        # this *should* only ever be a stable dark pion
+        darkPion = '4900{:d}{:d}1'.format(darkQuarkFromRho, antiDarkQuarkFromRho)
+        thisBR = 1.0
+        # to reuse this for simplified case
+        if self.dm:
+            darkPion = self.dm
+            thisBR = self.rinv
+        # compute allowed decays to quarks
+        self.quarks.set(self.mass - self.helper.mpi)
+        theQuarks = self.quarks.get()
+        bfQuarks = thisBR/float(len(theQuarks))
+        lines = [
+            '{:d}:addChannel = 1 {:g} 101 {} {:d} -{:d}'.format(self.id,bfQuarks,darkPion,q.id,q.id) for q in theQuarks
+        ]
+        return lines
 
     def darkRhoSimpDecay(self):
         if self.mass > 2*self.helper.mpi:
+            # no rinv in this case, just rho -> pi pi
+            self.rinv = None
             return self.darkRho2BodySimpDecay()
         else:
-            return self.darkRho3BodyDecay()
+            return self.darkRho3BodySimpDecay()
 
     def darkRho2BodySimpDecay(self):
         decay_args = []
@@ -283,6 +295,15 @@ class darkHadron():
         elif self.id==4900213:
             decay_args = [4900111, 4900211]
         lines = ['{:d}:addChannel = 1 1 101 {:d} {:d}'.format(self.id,decay_args[0],decay_args[1])]
+        return lines
+
+    def darkRho3BodySimpDecay(self):
+        # in complete model, rho 3-body decays correspond to stable pions (in terms of flavor)
+        # while other rhos decay fully visibly (qq)
+        # therefore, in simplified model, two decay types:
+        # rho -> pi qq with BR = rinv
+        # rho -> qq with BR = 1-rinv
+        lines = self.democraticDecay() + self.darkRho3BodyDecay()
         return lines
 
 class hvSpectrum():
@@ -336,19 +357,19 @@ class hvSpectrum():
     def snowmassSpectrum(self):
         self.customLines = self.quarkLines()
         self.darkHadrons = self.dmForRinv() + [
-            darkHadron(self.helper,id=4900111,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=53),
+            darkHadron(self.helper,id=4900111,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=51),
             darkHadron(self.helper,id=4900211,mass=self.helper.mpi,decay='stable'),
-            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='darkRhoSimp'),
-            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='darkRhoSimp'),
+            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='darkRho2BodySimp'), # 3-body case not explored here
+            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='darkRho2BodySimp'),
         ]
 
     def snowmass_cmslikeSpectrum(self):
         self.customLines = self.quarkLines()
         self.darkHadrons = self.dmForRinv() + [
-            darkHadron(self.helper,id=4900111,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=53),
-            darkHadron(self.helper,id=4900211,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=53),
-            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='darkRhoSimp'),
-            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='darkRhoSimp'),
+            darkHadron(self.helper,id=4900111,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=51),
+            darkHadron(self.helper,id=4900211,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=51),
+            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='darkRho2BodySimp'), # 3-body case not explored here
+            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='darkRho2BodySimp'),
         ]
 
     def fcdcSpectrum(self):
@@ -383,20 +404,24 @@ class hvSpectrum():
                     # only stable if carrying a stable quark... first Ns quarks are stable
                     if i <= self.helper.Ns or j<= self.helper.Ns:
                         hadronLines.append(darkHadron(self.helper,id=pid_scalar,mass=self.helper.mpi,decay='stable'))
+                        hadronLines.append(darkHadron(self.helper,id=pid_vector,mass=self.helper.mrho,decay='darkRhoProtected'))
                     else:
                         hadronLines.append(darkHadron(self.helper,id=pid_scalar,mass=self.helper.mpi,decay='massInsertion'))
-                    hadronLines.append(darkHadron(self.helper,id=pid_vector,mass=self.helper.mrho,decay='darkRho'))
+                        hadronLines.append(darkHadron(self.helper,id=pid_vector,mass=self.helper.mrho,decay='darkRho'))
 
-        self.darkHadrons = self.dmForRinv() + hadronLines
+        self.darkHadrons = hadronLines
         self.customLines += antiLines
 
     def fcdcSimpSpectrum(self):
         self.customLines = self.quarkLines()
+        # for 3-body decay
+        stableDarkPion = 4900210
         self.darkHadrons = self.dmForRinv() + [
-            darkHadron(self.helper,id=4900111,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=53),
-            darkHadron(self.helper,id=4900211,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=53),
-            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='darkRhoSimp'),
-            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='darkRhoSimp'),
+            darkHadron(self.helper,id=stableDarkPion,mass=self.helper.mpi,decay='stable',props=['new = pivStable pivStablebar 1 0 0']),
+            darkHadron(self.helper,id=4900111,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=51),
+            darkHadron(self.helper,id=4900211,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=51),
+            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='darkRhoSimp',rinv=self.helper.rinv,dm=stableDarkPion,auto_rinv=False),
+            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='darkRhoSimp',rinv=self.helper.rinv,dm=stableDarkPion,auto_rinv=False),
         ]
 
 class hvChannel():
