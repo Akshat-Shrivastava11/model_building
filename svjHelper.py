@@ -330,6 +330,8 @@ class hvSpectrum():
     def quarkLinesSeparate(self):
         lines = [
             'HiddenValley:separateFlav = on',
+            # disable eta prime production: Nf^2-1 accessible states
+            'HiddenValley:probKeepEta1 = 0',
         ]
         # for separateFlav=on, set masses of all the dark quarks
         for i in range(1, self.helper.Nf+1):
