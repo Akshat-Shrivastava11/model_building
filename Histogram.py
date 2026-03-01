@@ -79,8 +79,8 @@ def getTau(events):
             if i != 1: events[j+'_tau{:d}{:d}'.format(i, i-1)] = events[j+'_tau{:d}'.format(i)] / events[j+'_tau{:d}'.format(i-1)]
     return events
 
-def histogram(filename, helper):
-    events = load_events(filename, with_constituents=True)
+def histogram(filename, helper, with_constituents=True):
+    events = load_events(filename, with_constituents=with_constituents)
 
     # require two jets
     mask = ak.num(events.FatJet)>=2
@@ -133,12 +133,13 @@ def histogram(filename, helper):
     events["DeltaPhi_MET_Jet2"] = np.abs(normalize_angle(events.MissingET.phi - events["Jet2_phi"]))
 
     # add substructure quantities
-    events["Jet1_girth"] = calculate_girth(events["Jet1"])
-    events["Jet2_girth"] = calculate_girth(events["Jet2"])
-    events["Jet1_ptD"] = calculate_ptD(events["Jet1"])
-    events["Jet2_ptD"] = calculate_ptD(events["Jet2"])
-    events["Jet1_majoraxis"], events["Jet1_minoraxis"] = calc_axis1_axis2(events["Jet1"])
-    events["Jet2_majoraxis"], events["Jet2_minoraxis"] = calc_axis1_axis2(events["Jet2"])
+    if with_constituents:
+        events["Jet1_girth"] = calculate_girth(events["Jet1"])
+        events["Jet2_girth"] = calculate_girth(events["Jet2"])
+        events["Jet1_ptD"] = calculate_ptD(events["Jet1"])
+        events["Jet2_ptD"] = calculate_ptD(events["Jet2"])
+        events["Jet1_majoraxis"], events["Jet1_minoraxis"] = calc_axis1_axis2(events["Jet1"])
+        events["Jet2_majoraxis"], events["Jet2_minoraxis"] = calc_axis1_axis2(events["Jet2"])
     events["Jet1_sdmass"] = events["Jet1"].SoftDroppedJet.mass
     events["Jet2_sdmass"] = events["Jet2"].SoftDroppedJet.mass
     events["Jet1_sdpt"] = events["Jet1"].SoftDroppedJet.pt
@@ -164,7 +165,9 @@ def histogram(filename, helper):
 
     # Stable inv frac
     dark_hadron_ids = helper.darkHadronFinalIDs
+    print('dark_hadron_ids',dark_hadron_ids)
     stable_particle_ids = helper.stableIDs
+    print('stable_particle_ids',stable_particle_ids)
     d1 = events.GenParticle["D1"]
 
     # Boolean array of whether a particle is dark
@@ -221,21 +224,26 @@ def histogram(filename, helper):
         "DeltaPhi": fill_hist("DeltaPhi",20,0,3.15,r"$\Delta\phi(JJ)$"),
         "DeltaPhi_MET_Jet1": fill_hist("DeltaPhi_MET_Jet1",25,0,3.15,r"$\Delta\phi(J_1,p_{\text{T}}^{\text{miss}})$"),
         "DeltaPhi_MET_Jet2": fill_hist("DeltaPhi_MET_Jet2",25,0,3.15,r"$\Delta\phi(J_2,p_{\text{T}}^{\text{miss}})$"),
-        "Jet1_girth": fill_hist("Jet1_girth",50,0,1,r"$g_{\text{jet}}(J_1)$"),
-        "Jet2_girth": fill_hist("Jet2_girth",50,0,1,r"$g_{\text{jet}}(J_2)$"),
-        "Jet1_ptD": fill_hist("Jet1_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_1)$"),
-        "Jet2_ptD": fill_hist("Jet2_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_2)$"),
-        "Jet1_major": fill_hist("Jet1_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_1)$"),
-        "Jet2_major": fill_hist("Jet2_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_2)$"),
-        "Jet1_minor": fill_hist("Jet1_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_1)$"),
-        "Jet2_minor": fill_hist("Jet2_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_2)$"),
+    }
+    if with_constituents:
+        hist_dict.update({
+            "Jet1_girth": fill_hist("Jet1_girth",50,0,1,r"$g_{\text{jet}}(J_1)$"),
+            "Jet2_girth": fill_hist("Jet2_girth",50,0,1,r"$g_{\text{jet}}(J_2)$"),
+            "Jet1_ptD": fill_hist("Jet1_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_1)$"),
+            "Jet2_ptD": fill_hist("Jet2_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_2)$"),
+            "Jet1_major": fill_hist("Jet1_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_1)$"),
+            "Jet2_major": fill_hist("Jet2_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_2)$"),
+            "Jet1_minor": fill_hist("Jet1_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_1)$"),
+            "Jet2_minor": fill_hist("Jet2_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_2)$"),
+        })
+    hist_dict.update({
         "Jet1_sdmass": fill_hist("Jet1_sdmass",50,0,250,r"$m_{\text{SD}}(J_1)$ [GeV]"),
         "Jet2_sdmass": fill_hist("Jet2_sdmass",50,0,250,r"$m_{\text{SD}}(J_2)$ [GeV]"),
         "Jet1_sdpt" : fill_hist("Jet1_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T}}(J_1)$ [GeV]"),
         "Jet2_sdpt" : fill_hist("Jet2_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T}}(J_2)$ [GeV]"),
         "stable_invisible_fraction": fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$"),
         "mMediator": fill_hist("mMediator",50,0,mmed*1.5,r"$m_{\text{mediator}}$ [GeV]"),
-    }
+    })
 
     for t in events.fields:
         if 'tau' not in t: continue
