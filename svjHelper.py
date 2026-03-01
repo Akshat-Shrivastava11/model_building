@@ -226,6 +226,18 @@ class darkHadron():
         antiQuarkIndex = str(self.id)[5]
         return int(antiQuarkIndex)
 
+    @staticmethod
+    def getDarkMeson(*, dq, adq, spin):
+        spin_final_digit = {
+            0: 1,
+            1: 3,
+        }
+        dq1 = max(dq, adq)
+        dq2 = min(dq, adq)
+        final = spin_final_digit[spin]
+        id = f'4900{dq1}{dq2}{final}'
+        return int(id)
+
     def darkRhoDecay(self):
         if self.mass > 2*self.helper.mpi:
             return self.darkRho2BodyDecay()
@@ -241,23 +253,29 @@ class darkHadron():
             return self.darkRho3BodyDecay()
 
     def darkRho2BodyDecay(self):
-        lines = []
-        # equal branching fraction to all dark quark flavors
-        branching_fraction = 1/ self.helper.Nf
         darkQuarkFromRho = self.getDarkQuark()
         antiDarkQuarkFromRho = self.getAntiDarkQuark()
 
-        for n in range(1,self.helper.Nf+1):
-            # I don't really like this so I will try to come up with a better way but for now I think it is at least correct
-            if n > darkQuarkFromRho:
-                decay1 = -1 * int('4900{:d}{:d}1'.format(n, darkQuarkFromRho) )
-            else:
-                decay1 = int('4900{:d}{:d}1'.format(darkQuarkFromRho, n) )
-            if n > antiDarkQuarkFromRho:
-                decay2 = int('4900{:d}{:d}1'.format(n, antiDarkQuarkFromRho) )
-            else:
-                decay2 = -1 * int('4900{:d}{:d}1'.format(antiDarkQuarkFromRho, n) )
-            lines.append('{:d}:addChannel = 1 {:03f} 101 {:d} {:d}'.format(self.id, branching_fraction, decay1, decay2))
+        etaPrime = self.getDarkMeson(dq=self.helper.Nf, adq=self.helper.Nf, spin=0)
+        allowed = []
+        for n in range(1, self.helper.Nf+1):
+            sign1 = -1 if n > darkQuarkFromRho else 1
+            sign2 = 1 if n > antiDarkQuarkFromRho else -1
+            meson1 = sign1 * self.getDarkMeson(dq=n, adq=darkQuarkFromRho, spin=0)
+            meson2 = sign2 * self.getDarkMeson(dq=n, adq=antiDarkQuarkFromRho, spin=0)
+            # etaPrime taken to be heavy (probKeepEta1=0), so exclude from allowed decays
+            if abs(meson1)==etaPrime or abs(meson2)==etaPrime:
+                continue
+            allowed.append(
+                (meson1, meson2)
+            )
+
+        # equal branching fraction to all allowed combinations of dark quark flavors
+        lines = []
+        bf = 1.0/len(allowed)
+        for decay1, decay2 in allowed:
+            lines.append('{:d}:addChannel = 1 {:03f} 101 {:d} {:d}'.format(self.id, bf, decay1, decay2))
+
         return lines
 
     def darkRho3BodyDecay(self):
@@ -265,7 +283,7 @@ class darkHadron():
         antiDarkQuarkFromRho = self.getAntiDarkQuark()
 
         # this *should* only ever be a stable dark pion
-        darkPion = '4900{:d}{:d}1'.format(darkQuarkFromRho, antiDarkQuarkFromRho)
+        darkPion = self.getDarkMeson(dq=darkQuarkFromRho, adq=antiDarkQuarkFromRho, spin=0)
         thisBR = 1.0
         # to reuse this for simplified case
         if self.dm:
@@ -391,8 +409,8 @@ class hvSpectrum():
         for i in range(1, self.helper.Nf+1):
             for j in range(1, self.helper.Nf+1):
                 if i < j: continue
-                pid_scalar = int(f'4900{i}{j}1')
-                pid_vector = int(f'4900{i}{j}3')
+                pid_scalar = darkHadron.getDarkMeson(dq=i, adq=j, spin=0)
+                pid_vector = darkHadron.getDarkMeson(dq=i, adq=j, spin=1)
                 antiLines.extend([
                     f'{pid_scalar}:antiName = piv{i}{j}bar',
                     f'{pid_vector}:antiName = rhov{i}{j}bar',
