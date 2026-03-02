@@ -79,7 +79,121 @@ def getTau(events):
             if i != 1: events[j+'_tau{:d}{:d}'.format(i, i-1)] = events[j+'_tau{:d}'.format(i)] / events[j+'_tau{:d}'.format(i-1)]
     return events
 
-def histogram(filename, helper, with_constituents=True):
+def calc_rinv(events, helper, debug):
+    pid = events.GenParticle["PID"]
+
+    def dprint(*args):
+        if debug:
+            print(*args)
+
+    # Stable inv frac
+    dark_hadron_ids = helper.darkHadronIDs
+    dprint('dark_hadron_ids',dark_hadron_ids)
+    dark_hadron_final_ids = helper.darkHadronFinalIDs
+    dprint('dark_hadron_final_ids',dark_hadron_final_ids)
+    stable_particle_ids = helper.stableIDs
+    dprint('stable_particle_ids',stable_particle_ids)
+
+    def printer(name, arr):
+        dprint(f'{name:<30}',ak.sum(arr, axis=1).to_numpy().tolist())
+
+    # Boolean array of whether a particle is dark
+    is_dark = ak.zeros_like(pid)
+    for dhid in dark_hadron_ids:
+        is_dark = is_dark | (np.abs(pid)==dhid)
+    is_dark = is_dark==1
+    printer('is_dark',is_dark)
+
+    # Boolean array of whether a particle is dark
+    is_dark_final = ak.zeros_like(pid)
+    for dhid in dark_hadron_final_ids:
+        is_dark_final = is_dark_final | (np.abs(pid)==dhid)
+    is_dark_final = is_dark_final==1
+    printer('is_dark_final',is_dark_final)
+
+    # exclude dark hadrons resulting from mixed decay of another dark hadron
+    m1 = events.GenParticle["M1"]
+    m2 = events.GenParticle["M2"]
+    d1 = events.GenParticle["D1"]
+    d2 = events.GenParticle["D2"]
+
+    m1_dark = (m1!=-1) & (is_dark[m1])
+    m1_d1_sm = (d1[m1]!=-1) & (~is_dark[d1[m1]])
+    m1_d2_sm = (d2[m1]!=-1) & (~is_dark[d2[m1]])
+    m2_dark = (m2!=-1) & (is_dark[m2])
+    m2_d1_sm = (d1[m2]!=-1) & (~is_dark[d1[m2]])
+    m2_d2_sm = (d2[m2]!=-1) & (~is_dark[d2[m2]])
+
+    def make_table(mask):
+        table = ak.zip({
+            "index": ak.local_index(pid)[mask],
+            "pid": pid[mask],
+            "final": is_dark_final[mask],
+            "i_m1": m1[mask],
+            "m1": pid[m1[mask]],
+            "m1_dark": m1_dark[mask],
+            "m1_d1": pid[d1[m1[mask]]],
+            "m1_d1_sm": m1_d1_sm[mask],
+            "m1_d2": pid[d2[m1[mask]]],
+            "m1_d2_sm": m1_d2_sm[mask],
+            "i_m2": m2[mask],
+            "m2": pid[m2[mask]],
+            "m2_dark": m2_dark[mask],
+            "m2_d1": pid[d1[m2[mask]]],
+            "m2_d1_sm": m2_d1_sm[mask],
+            "m2_d2": pid[d2[m2[mask]]],
+            "m2_d2_sm": m2_d2_sm[mask],
+            "i_d1": d1[mask],
+            "d1": pid[d1[mask]],
+            "i_d2": d2[mask],
+            "d2": pid[d2[mask]],
+        })
+        return table
+
+    # for debugging, show only dark hadron entries
+    if debug:
+        table_debug = make_table(mask=is_dark)
+        import pandas as pd
+        with pd.option_context('display.max_columns', None, 'display.max_rows', None, 'display.width', None, 'display.max_colwidth', None):
+            dprint(ak.to_pandas(table_debug))
+
+    m1_dark_d_sm = m1_dark & (m1_d1_sm | m1_d2_sm)
+    m2_dark_d_sm = m2_dark & (m2_d1_sm | m2_d2_sm)
+    for name,arr in [('m1_dark',m1_dark),
+                     ('m1_dark_d1_sm',m1_dark & m1_d1_sm),
+                     ('m1_dark_d2_sm',m1_dark & m1_d2_sm),
+                     ('m1_dark_d1_d2_sm',m1_dark_d_sm),
+                     ('m2_dark',m2_dark),
+                     ('m2_dark_d1_sm',m2_dark & m2_d1_sm),
+                     ('m2_dark_d2_sm',m2_dark & m2_d2_sm),
+                     ('m2_dark_d1_d2_sm',m2_dark_d_sm)]:
+        printer(name,arr)
+    dark_mother_sm_sibling = (m1_dark_d_sm) | (m2_dark_d_sm)
+    dark_mother_sm_sibling = dark_mother_sm_sibling==1
+    printer('dark_mother_sm_sibling',dark_mother_sm_sibling)
+    is_dark_final = is_dark_final & ~dark_mother_sm_sibling
+    printer('is_dark_final',is_dark_final)
+
+    # PIDs of dark daughter
+    dark_final_daughter = pid[d1[is_dark_final]]
+    is_dark_final_daughter = ak.zeros_like(dark_final_daughter) | (d1[is_dark_final]==-1)
+    printer('is_dark_final_daughter',is_dark_final_daughter)
+
+    for dsid in stable_particle_ids:
+        printer(f'dark_final_daughter=={dsid}', (np.abs(dark_final_daughter)==dsid))
+        is_dark_final_daughter = is_dark_final_daughter | (np.abs(dark_final_daughter)==dsid)
+    printer('is_dark_final_daughter',is_dark_final_daughter)
+
+    numer = ak.sum(is_dark_final_daughter, axis=1).to_numpy()
+    denom = ak.sum(is_dark_final, axis=1).to_numpy()
+    with np.errstate(divide='ignore', invalid='ignore'):
+        stability = np.where(denom>0, numer/denom, 0)
+    dprint('stability',stability.tolist())
+    print(f"Average computed rinv value = {np.mean(stability):.5} ({np.std(stability):.5})")
+
+    return stability
+
+def histogram(filename, helper, with_constituents=True, debug=False):
     events = load_events(filename, with_constituents=with_constituents)
 
     # require two jets
@@ -163,103 +277,8 @@ def histogram(filename, helper, with_constituents=True):
     meds_final = meds[is_final][:,0]
     events["mMediator"] = meds_final.mass
 
-    # Stable inv frac
-    dark_hadron_ids = helper.darkHadronIDs
-    print('dark_hadron_ids',dark_hadron_ids)
-    dark_hadron_final_ids = helper.darkHadronFinalIDs
-    print('dark_hadron_final_ids',dark_hadron_final_ids)
-    stable_particle_ids = helper.stableIDs
-    print('stable_particle_ids',stable_particle_ids)
-
-    def printer(name, arr):
-        print(f'{name:<30}',ak.sum(arr, axis=1).to_numpy().tolist())
-
-    # Boolean array of whether a particle is dark
-    is_dark = ak.zeros_like(pid)
-    for dhid in dark_hadron_ids:
-        is_dark = is_dark | (np.abs(pid)==dhid)
-    is_dark = is_dark==1
-    printer('is_dark',is_dark)
-    print('pid[is_dark]',pid[is_dark].tolist())
-
-    # Boolean array of whether a particle is dark
-    is_dark_final = ak.zeros_like(pid)
-    for dhid in dark_hadron_final_ids:
-        is_dark_final = is_dark_final | (np.abs(pid)==dhid)
-    is_dark_final = is_dark_final==1
-    printer('is_dark_final',is_dark_final)
-    print('pid[is_dark_final]',pid[is_dark_final].tolist())
-
-    # exclude dark hadrons resulting from mixed decay of another dark hadron
-    dark_mother_sm_sibling = ak.zeros_like(pid)
-    m1 = events.GenParticle["M1"]
-    m2 = events.GenParticle["M2"]
-    d1 = events.GenParticle["D1"]
-    d2 = events.GenParticle["D2"]
-
-    table = ak.zip({
-        "index": ak.local_index(pid)[is_dark],
-        "pid": pid[is_dark],
-        "final": is_dark_final[is_dark],
-        "i_m1": m1[is_dark],
-        "m1": pid[m1[is_dark]],
-        "m1_dark": (m1[is_dark]!=-1) & (is_dark[m1[is_dark]]),
-        "m1_d1": pid[d1[m1[is_dark]]],
-        "m1_d1_sm": (d1[m1[is_dark]]!=-1) & (~is_dark[d1[m1[is_dark]]]),
-        "m1_d2": pid[d2[m1[is_dark]]],
-        "m1_d2_sm": (d2[m1[is_dark]]!=-1) & (~is_dark[d2[m1[is_dark]]]),
-        "i_m2": m2[is_dark],
-        "m2": pid[m2[is_dark]],
-        "m2_dark": (m2[is_dark]!=-1) & (is_dark[m2[is_dark]]),
-        "m2_d1": pid[d1[m2[is_dark]]],
-        "m2_d1_sm": (d1[m2[is_dark]]!=-1) & (~is_dark[d1[m2[is_dark]]]),
-        "m2_d2": pid[d2[m2[is_dark]]],
-        "m2_d2_sm": (d2[m2[is_dark]]!=-1) & (~is_dark[d2[m2[is_dark]]]),
-        "i_d1": d1[is_dark],
-        "d1": pid[d1[is_dark]],
-        "i_d2": d2[is_dark],
-        "d2": pid[d2[is_dark]],
-    })
-    import pandas as pd
-    with pd.option_context('display.max_columns', None, 'display.max_rows', None, 'display.width', None, 'display.max_colwidth', None):
-        print(ak.to_pandas(table))
-
-    m1_dark = (m1!=-1) & (is_dark[m1])
-    m1_d1_sm = (d1[m1]!=-1) & (~is_dark[d1[m1]])
-    m1_d2_sm = (d2[m1]!=-1) & (~is_dark[d2[m1]])
-    m2_dark = (m2!=-1) & (is_dark[m2])
-    m2_d1_sm = (d1[m2]!=-1) & (~is_dark[d1[m2]])
-    m2_d2_sm = (d2[m2]!=-1) & (~is_dark[d2[m2]])
-    print('dhid',dhid)
-    for name,arr in [('m1_dark',m1_dark),('m1_dark_d1_sm',m1_dark & m1_d1_sm),('m1_dark_d2_sm',m1_dark & m1_d2_sm), ('m1_dark_d1_d2_sm', m1_dark & (m1_d1_sm | m1_d2_sm)),
-                     ('m2_dark',m2_dark),('m2_dark_d1_sm',m2_dark & m2_d1_sm),('m2_dark_d2_sm',m2_dark & m2_d2_sm), ('m2_dark_d1_d2_sm', m2_dark & (m2_d1_sm | m2_d2_sm))]:
-        printer(name,arr)
-    dark_mother_sm_sibling = dark_mother_sm_sibling | (m1_dark & (m1_d1_sm | m1_d2_sm)) | (m2_dark & (m2_d1_sm | m2_d2_sm))
-    printer('dark_mother_sm_sibling',dark_mother_sm_sibling)
-    dark_mother_sm_sibling = dark_mother_sm_sibling==1
-    is_dark_final = is_dark_final & ~dark_mother_sm_sibling
-    printer('is_dark_final',is_dark_final)
-    print('pid[is_dark_final]',pid[is_dark_final].tolist())
-
-    # PIDs of dark daughter
-    dark_final_daughter = pid[d1[is_dark_final]]
-    is_dark_final_daughter = ak.zeros_like(dark_final_daughter) | (d1[is_dark_final]==-1)
-    printer('is_dark_final_daughter',is_dark_final_daughter)
-
-    for dsid in stable_particle_ids:
-        printer(f'dark_final_daughter=={dsid}', (np.abs(dark_final_daughter)==dsid))
-        is_dark_final_daughter = is_dark_final_daughter | (np.abs(dark_final_daughter)==dsid)
-    printer('is_dark_final_daughter',is_dark_final_daughter)
-
-    numer = ak.sum(is_dark_final_daughter, axis=1).to_numpy()
-    denom = ak.sum(is_dark_final, axis=1).to_numpy()
-    with np.errstate(divide='ignore', invalid='ignore'):
-        stability = np.where(denom>0, numer/denom, 0)
-    print('stability',stability.tolist())
-    print(f"Average computed rinv value = {np.mean(stability):.5} ({np.std(stability):.5})")
-
     # Add the invisible fraction to the events
-    events["stable_invisible_fraction"] = stability
+    events["stable_invisible_fraction"] = calc_rinv(events, helper, debug)
 
     # bind events into filling functions
     def get_values(var):
