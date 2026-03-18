@@ -1,7 +1,7 @@
 #!/bin/bash
 
-export LCG_VIEW=LCG_105
-export LCG_ARCH=x86_64-el9-gcc12-opt
+export LCG_VIEW=LCG_106
+export LCG_ARCH=x86_64-el9-gcc13-opt
 source /cvmfs/sft.cern.ch/lcg/views/${LCG_VIEW}/${LCG_ARCH}/setup.sh
 
 export MODEL_BUILDING=$PWD

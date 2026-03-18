@@ -21,5 +21,5 @@ for PKG in ${PKGS_UPGRADE[@]}; do
 done
 
 cat << 'EOF' > mb_init.sh
-export PYTHONPATH=${MODEL_BUILDING}/install/python_packages/.local/lib/python3.9/site-packages/:${PYTHONPATH}
+export PYTHONPATH=${MODEL_BUILDING}/install/python_packages/.local/lib/python3.11/site-packages/:${PYTHONPATH}
 EOF
