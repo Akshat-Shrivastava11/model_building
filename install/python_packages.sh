@@ -5,7 +5,6 @@ cd python_packages
 
 PKGS=(
 magiconfig \
-coffea==2025.9.0 \
 )
 
 for PKG in ${PKGS[@]}; do
@@ -13,6 +12,7 @@ for PKG in ${PKGS[@]}; do
 done
 
 PKGS_UPGRADE=(
+coffea==2025.12.0 \
 mplhep \
 )
 
