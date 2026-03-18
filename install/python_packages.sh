@@ -3,14 +3,6 @@
 mkdir -p python_packages
 cd python_packages
 
-PKGS=(
-magiconfig \
-)
-
-for PKG in ${PKGS[@]}; do
-	HOME=$PWD pip install --user --no-cache-dir $PKG
-done
-
 PKGS_UPGRADE=(
 coffea==2025.12.0 \
 mplhep \
@@ -18,6 +10,15 @@ mplhep \
 
 for PKG in ${PKGS_UPGRADE[@]}; do
 	HOME=$PWD pip install --user --no-cache-dir --upgrade $PKG
+done
+
+PKGS=(
+magiconfig \
+fastjet \
+)
+
+for PKG in ${PKGS[@]}; do
+	HOME=$PWD pip install --user --no-cache-dir $PKG
 done
 
 cat << 'EOF' > mb_init.sh
