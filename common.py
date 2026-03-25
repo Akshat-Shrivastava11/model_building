@@ -59,18 +59,76 @@ def get_constituents_kernel(jet_refs: NDArray[np.int32], cand_ids: NDArray[np.ui
     output = [hash_table[ref] for ref in jet_refs]
     return np.asarray(output)
 
-# apply kernel to events
-def get_constituents(events, jetsname, candsname):
-    output = []
-    for jets,cands in zip(events[jetsname], events[candsname]):
-        indices = get_constituents_kernel(ak.flatten(jets.Constituents.refs).to_numpy(), cands.fUniqueID.to_numpy()) if jets is not None else []
-        if len(indices)==0:
-            unflattened = None
-        else:
-            unflattened = ak.unflatten(cands[indices],ak.count(jets.Constituents.refs,axis=1),behavior=cands.behavior)[None]
-        output.append(unflattened)
-    # very important for performance to call ak.concatenate only once at the end
-    return ak.with_name(ak.concatenate(output), DelphesSchema2.mixins[candsname])
+# apply kernel to events (in chunks)
+def get_constituents_chunk(events, jetsname, candsname):
+    jets = events[jetsname]
+    cands = events[candsname]
+
+    flat_indices = []
+    counts_all = []
+    jets_per_event = []
+
+    # compute candidate offsets
+    cand_counts = ak.num(cands, axis=1)
+    cand_offsets = np.cumsum(np.concatenate([[0], ak.to_numpy(cand_counts[:-1])]))
+
+    for i, (jets_evt, cands_evt) in enumerate(zip(jets, cands)):
+        if jets_evt is None:
+            jets_per_event.append(0)
+            continue
+
+        refs = ak.flatten(jets_evt.Constituents.refs)
+        counts = ak.num(jets_evt.Constituents.refs, axis=1)
+
+        jets_per_event.append(len(counts))
+        counts_all.extend(counts.tolist())
+
+        if len(refs) == 0:
+            flat_indices.append(np.array([], dtype=np.int64))
+            continue
+
+        # local indices within event
+        local_idx = get_constituents_kernel(
+            ak.to_numpy(refs),
+            ak.to_numpy(cands_evt.fUniqueID),
+        )
+
+        # convert to global indices
+        global_idx = local_idx + cand_offsets[i]
+
+        flat_indices.append(global_idx)
+
+    # concatenate indices only (cheap)
+    flat_indices = np.concatenate(flat_indices) if flat_indices else np.array([], dtype=np.int64)
+
+    # zero-copy flatten of candidates
+    flat_cands = ak.flatten(cands)
+
+    # single gather
+    gathered = flat_cands[flat_indices]
+
+    # rebuild structure (one level at a time)
+    jets_level = ak.unflatten(gathered, counts_all)
+    events_level = ak.unflatten(jets_level, jets_per_event)
+
+    return ak.with_name(events_level, DelphesSchema2.mixins[candsname])
+
+def get_constituents(events, jetsname, candsname, chunk_size=500):
+    outputs = []
+
+	# chunking avoids memory overusage
+    for start in range(0, len(events), chunk_size):
+        stop = start + chunk_size
+        chunk = events[start:stop]
+
+        outputs.append(
+            get_constituents_chunk(chunk, jetsname, candsname)
+        )
+
+    return ak.with_name(
+        ak.concatenate(outputs),
+        DelphesSchema2.mixins[candsname]
+    )
 
 def init_constituents(events):
     for jet,const in DelphesSchema2.jet_const_pairs.items():

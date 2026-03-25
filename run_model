@@ -38,7 +38,7 @@ if __name__=="__main__":
     common.add_argument("--dir", type=str, default="models", help="output directory")
     common.add_argument("--pythia", type=str, nargs='*', default=["cards/CMS_Common.txt","cards/CMS_Tune_CP5.txt"], help="additional settings for Pythia")
     common.add_argument("--delphes", type=str, default="cards/delphes_card_CMS.tcl", help="template card for Delphes")
-    common.add_argument("--no-constituents", default=False, action="store_true", help="disable memory-intensive constituent-based computations during histogramming")
+    common.add_argument("--no-constituents", default=False, action="store_true", help="disable (potentially intensive) constituent-based computations during histogramming")
     common.add_argument("--debug", default=False, action="store_true", help="enable detailed debug printouts during histogramming")
 
     parser = ArgumentParser(
