@@ -17,7 +17,7 @@ source init.sh
 This repository is built on the [LCG 106](https://lcginfo.cern.ch/release_packages/106/x86_64-el9-gcc13-opt/) environment.
 Important software versions:
 * Pythia8 3.10
-* Delphes 3.5.1pre09
+* Delphes 3.5.1 (patched)
 * HepMC 2.06.11
 * ROOT 6.32.02
 * coffea 2025.12.0

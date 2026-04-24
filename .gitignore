@@ -1,5 +1,4 @@
-/install/pythia8/
-/install/python_packages/
+/install/*/
 *.png
 *.pkl
 *.pdf
