@@ -291,48 +291,48 @@ def histogram(filename, helper, with_constituents=True, debug=False):
             .Double()
         )
         h.fill(get_values(var))
-        return h
+        return (var,h)
 
     # Creating hist objects
-    hist_dict = {
-        "MT": fill_hist("MT",50,0,mmed*1.5,r"$m_{\text{T}}$ [GeV]"),
-        "Dijet_pt": fill_hist("Dijet_pt",50,0,mmed*0.75,r"$p_{\text{T}}(JJ)$ [GeV]"),
-        "Dijet_eta": fill_hist("Dijet_eta",50,-10,10,r"$\eta(JJ)$ [GeV]"),
-        "Dijet_phi": fill_hist("Dijet_phi",25,-3.15,3.15,r"$\phi(JJ)$"),
-        "Dijet_mass": fill_hist("Dijet_mass",50,0,mmed*1.5,r"$m_{JJ}$ [GeV]"),
-        "Jet1_pt": fill_hist("Jet1_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_1)$ [GeV]"),
-        "Jet2_pt": fill_hist("Jet2_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_2)$ [GeV]"),
-        "Jet1_eta": fill_hist("Jet1_eta",50,-6,6,r"$\eta(J_1)$"),
-        "Jet2_eta": fill_hist("Jet2_eta",50,-6,6,r"$\eta(J_2)$"),
-        "Jet1_phi": fill_hist("Jet1_phi",25,-3.15,3.15,r"$\phi(J_1)$"),
-        "Jet2_phi": fill_hist("Jet2_phi",25,-3.15,3.15,r"$\phi(J_2)$"),
-        "Jet1_mass": fill_hist("Jet1_mass",50,0,250,r"$m_{J_1}$ [GeV]"),
-        "Jet2_mass": fill_hist("Jet2_mass",50,0,250,r"$m_{J_2}$ [GeV]"),
-        "MET": fill_hist("MET",50,0,mmed*0.75,r"$p_{\text{T}}^{\text{miss}}$ [GeV]"),
-        "DeltaEta": fill_hist("DeltaEta",35,0,8.0,r"$\Delta\eta(JJ)$"),
-        "DeltaPhi": fill_hist("DeltaPhi",20,0,3.15,r"$\Delta\phi(JJ)$"),
-        "DeltaPhi_MET_Jet1": fill_hist("DeltaPhi_MET_Jet1",25,0,3.15,r"$\Delta\phi(J_1,p_{\text{T}}^{\text{miss}})$"),
-        "DeltaPhi_MET_Jet2": fill_hist("DeltaPhi_MET_Jet2",25,0,3.15,r"$\Delta\phi(J_2,p_{\text{T}}^{\text{miss}})$"),
-    }
+    hist_dict = dict([
+        fill_hist("MT",50,0,mmed*1.5,r"$m_{\text{T}}$ [GeV]"),
+        fill_hist("Dijet_pt",50,0,mmed*0.75,r"$p_{\text{T}}(JJ)$ [GeV]"),
+        fill_hist("Dijet_eta",50,-10,10,r"$\eta(JJ)$ [GeV]"),
+        fill_hist("Dijet_phi",25,-3.15,3.15,r"$\phi(JJ)$"),
+        fill_hist("Dijet_mass",50,0,mmed*1.5,r"$m_{JJ}$ [GeV]"),
+        fill_hist("Jet1_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_1)$ [GeV]"),
+        fill_hist("Jet2_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_2)$ [GeV]"),
+        fill_hist("Jet1_eta",50,-6,6,r"$\eta(J_1)$"),
+        fill_hist("Jet2_eta",50,-6,6,r"$\eta(J_2)$"),
+        fill_hist("Jet1_phi",25,-3.15,3.15,r"$\phi(J_1)$"),
+        fill_hist("Jet2_phi",25,-3.15,3.15,r"$\phi(J_2)$"),
+        fill_hist("Jet1_mass",50,0,250,r"$m_{J_1}$ [GeV]"),
+        fill_hist("Jet2_mass",50,0,250,r"$m_{J_2}$ [GeV]"),
+        fill_hist("MET",50,0,mmed*0.75,r"$p_{\text{T}}^{\text{miss}}$ [GeV]"),
+        fill_hist("DeltaEta",35,0,8.0,r"$\Delta\eta(JJ)$"),
+        fill_hist("DeltaPhi",20,0,3.15,r"$\Delta\phi(JJ)$"),
+        fill_hist("DeltaPhi_MET_Jet1",25,0,3.15,r"$\Delta\phi(J_1,p_{\text{T}}^{\text{miss}})$"),
+        fill_hist("DeltaPhi_MET_Jet2",25,0,3.15,r"$\Delta\phi(J_2,p_{\text{T}}^{\text{miss}})$"),
+    ])
     if with_constituents:
-        hist_dict.update({
-            "Jet1_girth": fill_hist("Jet1_girth",50,0,1,r"$g_{\text{jet}}(J_1)$"),
-            "Jet2_girth": fill_hist("Jet2_girth",50,0,1,r"$g_{\text{jet}}(J_2)$"),
-            "Jet1_ptD": fill_hist("Jet1_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_1)$"),
-            "Jet2_ptD": fill_hist("Jet2_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_2)$"),
-            "Jet1_major": fill_hist("Jet1_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_1)$"),
-            "Jet2_major": fill_hist("Jet2_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_2)$"),
-            "Jet1_minor": fill_hist("Jet1_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_1)$"),
-            "Jet2_minor": fill_hist("Jet2_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_2)$"),
-        })
-    hist_dict.update({
-        "Jet1_sdmass": fill_hist("Jet1_sdmass",50,0,250,r"$m_{\text{SD}}(J_1)$ [GeV]"),
-        "Jet2_sdmass": fill_hist("Jet2_sdmass",50,0,250,r"$m_{\text{SD}}(J_2)$ [GeV]"),
-        "Jet1_sdpt" : fill_hist("Jet1_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T}}(J_1)$ [GeV]"),
-        "Jet2_sdpt" : fill_hist("Jet2_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T}}(J_2)$ [GeV]"),
-        "stable_invisible_fraction": fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$"),
-        "mMediator": fill_hist("mMediator",50,0,mmed*1.5,r"$m_{\text{mediator}}$ [GeV]"),
-    })
+        hist_dict.update([
+            fill_hist("Jet1_girth",50,0,1,r"$g_{\text{jet}}(J_1)$"),
+            fill_hist("Jet2_girth",50,0,1,r"$g_{\text{jet}}(J_2)$"),
+            fill_hist("Jet1_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_1)$"),
+            fill_hist("Jet2_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_2)$"),
+            fill_hist("Jet1_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_1)$"),
+            fill_hist("Jet2_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_2)$"),
+            fill_hist("Jet1_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_1)$"),
+            fill_hist("Jet2_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_2)$"),
+        ])
+    hist_dict.update([
+        fill_hist("Jet1_sdmass",50,0,250,r"$m_{\text{SD}}(J_1)$ [GeV]"),
+        fill_hist("Jet2_sdmass",50,0,250,r"$m_{\text{SD}}(J_2)$ [GeV]"),
+        fill_hist("Jet1_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T}}(J_1)$ [GeV]"),
+        fill_hist("Jet2_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T}}(J_2)$ [GeV]"),
+        fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$"),
+        fill_hist("mMediator",50,0,mmed*1.5,r"$m_{\text{mediator}}$ [GeV]"),
+    ])
 
     for t in events.fields:
         if 'tau' not in t: continue
