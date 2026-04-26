@@ -14,6 +14,7 @@ DelphesSchema.mixins.update({
     "FatJet": "Jet",
     "GenFatJet": "Jet",
     "DarkHadronJet": "Jet",
+    "DarkHadronVisibleJet": "Jet",
 })
 
 # workaround for https://cp3.irmp.ucl.ac.be/projects/delphes/ticket/1170
@@ -33,6 +34,7 @@ class DelphesSchema2(DelphesSchema):
         "FatJet" : "ParticleFlowCandidate",
         "Jet" : "ParticleFlowCandidate",
         "DarkHadronJet" : "DarkHadronCandidate",
+        "DarkHadronVisibleJet": "GenCandidate",
         "GenFatJet" : "GenCandidate",
         "GenJet" : "GenCandidate",
     }
