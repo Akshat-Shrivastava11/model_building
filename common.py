@@ -8,6 +8,9 @@ from coffea.nanoevents.methods.delphes import behavior, _set_repr_name, Particle
 
 DelphesSchema.mixins.update({
     "ParticleFlowCandidate": "Particle",
+    "DarkHadronCandidate": "Particle",
+    "GenCandidate": "Particle",
+    "GenParticle": "Particle",
     "FatJet": "Jet",
     "GenFatJet": "Jet",
     "DarkHadronJet": "Jet",
@@ -15,21 +18,15 @@ DelphesSchema.mixins.update({
 
 # workaround for https://cp3.irmp.ucl.ac.be/projects/delphes/ticket/1170
 # manually fix mass units
-
-@ak.mixin_class(behavior)
-class GenParticle(Particle):
-    @property
-    def mass(self):
-        return self["Mass"]*0.001
-
-_set_repr_name("GenParticle")
-
-# propagate usage to schema, only for generator particles
-DelphesSchema.mixins.update({
-    "GenParticle": "GenParticle",
-    "GenCandidate": "GenParticle",
-    "DarkHadronCandidate": "GenParticle",
-})
+def fix_delphes_mass_units(events):
+    GenParticleCollections = [
+        "GenParticle",
+        "GenCandidate",
+        "DarkHadronCandidate",
+    ]
+    for col in GenParticleCollections:
+        events[col, "Mass"] = events[col]["Mass"]*0.001
+    return events
 
 class DelphesSchema2(DelphesSchema):
     jet_const_pairs = {
@@ -174,7 +171,10 @@ def load_events(filename,schema=DelphesSchema,metadict=None,with_constituents=Fa
         metadata=metadict,
     ).events()
 
+    events = fix_delphes_mass_units(events)
+
     if with_constituents:
         events = init_constituents(events)
+
     return events
 
