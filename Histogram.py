@@ -6,6 +6,7 @@ import matplotlib as mpl
 from coffea.nanoevents import NanoEventsFactory
 from common import load_events
 from collections import defaultdict
+from itertools import chain
 
 def ET(vec):
     return np.sqrt(vec.px**2+vec.py**2+vec.mass**2)
@@ -282,75 +283,76 @@ def histogram(filename, helper, with_constituents=True, debug=False):
     events["stable_invisible_fraction"] = calc_rinv(events, helper, debug)
 
     # dark hadron jets and corresponding visible jets
-    events["DHJet1"] = events.DarkHadronJet[:,0]
-    events["DHJet2"] = events.DarkHadronJet[:,1]
-    events["DHVJet1"] = events.DarkHadronVisibleJet[:,0]
-    events["DHVJet2"] = events.DarkHadronVisibleJet[:,1]
-
-    # keep derived quantities in a dict
-    # otherwise storing concatenation of J1 and J2 will fail b/c different size
-    qtys = {}
+    events["DHJet12"] = events.DarkHadronJet[:,0:2]
+    events["DHVJet12"] = events.DarkHadronVisibleJet[:,0:2]
 
     # per-jet calculation of invisible fraction based on pt
-    dr_inds = ["1","2",""]
-    for ind in [1,2]:
-        qtys[f"DHJet{ind}_rinv"] = 1 - events[f"DHVJet{ind}"].pt / events[f"DHJet{ind}"].pt
-    qtys["DHJet_rinv"] = ak.concatenate([qtys["DHJet1_rinv"], qtys["DHJet2_rinv"]])
-    print("Average jet-level rinv =", ", ".join([f"{np.mean(jrinv):.5} ({np.std(jrinv):.5})" for jrinv in [qtys[f"DHJet{ind}_rinv"] for ind in dr_inds]]))
+    jet_inds = [0, 1, slice(0, 2)]
+    events["DHJet12_rinv"] = 1 - events["DHVJet12"].pt / events["DHJet12"].pt
+    print("Average jet-level rinv =", ", ".join(
+        [f"{np.mean(jrinv):.5} ({np.std(jrinv):.5})" for jrinv in [events["DHJet12_rinv"][:, ind] for ind in jet_inds]]
+    ))
 
     if with_constituents:
         # dark jet and visible jet radius
         for pre in ["DH", "DHV"]:
             print(f"\n{pre}Jet")
-            for ind in [1,2]:
-                qtys[f"{pre}Jet{ind}_radius"] = ak.max(deltaR(events[f"{pre}Jet{ind}"]), axis=-1)
-                qtys[f"{pre}Jet{ind}_pt"] = events[f"{pre}Jet{ind}"].pt
-            qtys[f"{pre}Jet_radius"] = ak.concatenate([qtys[f"{pre}Jet1_radius"], qtys[f"{pre}Jet2_radius"]])
-            qtys[f"{pre}Jet_pt"] = ak.concatenate([qtys[f"{pre}Jet1_pt"], qtys[f"{pre}Jet2_pt"]])
+            events[f"{pre}Jet12_radius"] = ak.max(deltaR(events[f"{pre}Jet12"]), axis=-1)
+            events[f"{pre}Jet12_pt"] = events[f"{pre}Jet12"].pt
 
             # summary of radius
-            flat_max_drs = [ak.flatten(qtys[f"{pre}Jet{ind}_radius"], axis=None) for ind in dr_inds]
+            flat_max_drs = [ak.flatten(events[f"{pre}Jet12_radius"][:, ind], axis=None) for ind in jet_inds]
             dr_pcts = [90,95,99]
             for pct in dr_pcts:
                 print(f"{pct}% radius:", ", ".join(["{:.2f}".format(np.percentile(max_dr, pct)) for max_dr in flat_max_drs]))
 
             # pt-weighted percentile
-            r_pct_pt = defaultdict(dict)
-            for ind in dr_inds:
-                flat_dr = ak.to_numpy(ak.flatten(qtys[f"{pre}Jet{ind}_radius"], axis=None))
-                flat_pt = ak.to_numpy(ak.flatten(qtys[f"{pre}Jet{ind}_pt"], axis=None))
-                sort_indices = np.argsort(flat_dr)
-                sorted_dr = flat_dr[sort_indices]
-                sorted_pt = flat_pt[sort_indices]
-                cumulative_pt = np.cumsum(sorted_pt)
-                total_pt = np.sum(sorted_pt)
-                for pct in dr_pcts:
+            for pct in dr_pcts:
+                r_pct_pts = []
+                for ind in jet_inds:
+                    flat_dr = ak.to_numpy(ak.flatten(events[f"{pre}Jet12_radius"][:, ind], axis=None))
+                    flat_pt = ak.to_numpy(ak.flatten(events[f"{pre}Jet12_pt"][:, ind], axis=None))
+                    sort_indices = np.argsort(flat_dr)
+                    sorted_dr = flat_dr[sort_indices]
+                    sorted_pt = flat_pt[sort_indices]
+                    cumulative_pt = np.cumsum(sorted_pt)
+                    total_pt = np.sum(sorted_pt)
                     target_pt = pct/100 * total_pt
                     index_pct = np.searchsorted(cumulative_pt, target_pt)
-                    r_pct_pt[ind][pct] = sorted_dr[index_pct]
-            for pct in dr_pcts:
-                print(f"{pct}% radius (pt-weighted):", ", ".join(["{:.2f}".format(r_pct_pt[ind][pct]) for ind in dr_inds]))
+                    r_pct_pts.append(sorted_dr[index_pct])
+                print(f"{pct}% radius (pt-weighted):", ", ".join(["{:.2f}".format(r_pct_pt) for r_pct_pt in r_pct_pts]))
 
             # also compute girth
-            for ind in [1,2]:
-                qtys[f"{pre}Jet{ind}_girth"] = calculate_girth(events[f"{pre}Jet{ind}"])
-            qtys[f"{pre}Jet_girth"] = ak.concatenate([qtys[f"{pre}Jet1_girth"], qtys[f"{pre}Jet2_girth"]])
+            events[f"{pre}Jet12_girth"] = calculate_girth(events[f"{pre}Jet12"])
 
     # bind events into filling functions
-    def get_values(var,src):
-        return ak.flatten(src[var],axis=None)
-
-    def fill_hist(var,nbins,bmin,bmax,label,src=events):
+    def fill_single_hist(var,nbins,bmin,bmax,label,ind=None):
         h = (
             hist.Hist.new
             .Reg(nbins, bmin, bmax, label=label)
             .Double()
         )
-        h.fill(get_values(var,src))
-        return (var,h)
+        event_var = events[var]
+        if ind:
+            event_var = events[var][ind]
+        h.fill(ak.flatten(event_var,axis=None))
+        return h
+
+    def fill_hist(var,nbins,bmin,bmax,label):
+        split = "JETIND" in label
+        if not split:
+            # still return a list of pairs for consistency w/ below usage of chain.from_iterable
+            return [(var,fill_single_hist(var,nbins,bmin,bmax,label))]
+        else:
+            results = []
+            jet_ind_names = ["1","2","1,2"]
+            jet_ind_keys = ["1","2","12"]
+            for ind,key,name in zip(jet_inds, jet_ind_keys, jet_ind_names):
+                results.append((var.replace("Jet12",f"Jet{key}"), fill_single_hist(var,nbins,bmin,bmax,label.replace("JETIND",name),ind)))
+            return results
 
     # Creating hist objects
-    hist_dict = dict([
+    hist_dict = dict(chain.from_iterable([
         fill_hist("MT",50,0,mmed*1.5,r"$m_{\text{T}}$ [GeV]"),
         fill_hist("Dijet_pt",50,0,mmed*0.75,r"$p_{\text{T}}(JJ)$ [GeV]"),
         fill_hist("Dijet_eta",50,-10,10,r"$\eta(JJ)$ [GeV]"),
@@ -369,9 +371,9 @@ def histogram(filename, helper, with_constituents=True, debug=False):
         fill_hist("DeltaPhi",20,0,3.15,r"$\Delta\phi(JJ)$"),
         fill_hist("DeltaPhi_MET_Jet1",25,0,3.15,r"$\Delta\phi(J_1,p_{\text{T}}^{\text{miss}})$"),
         fill_hist("DeltaPhi_MET_Jet2",25,0,3.15,r"$\Delta\phi(J_2,p_{\text{T}}^{\text{miss}})$"),
-    ])
+    ]))
     if with_constituents:
-        hist_dict.update([
+        hist_dict.update(chain.from_iterable([
             fill_hist("Jet1_girth",50,0,1,r"$g_{\text{jet}}(J_1)$"),
             fill_hist("Jet2_girth",50,0,1,r"$g_{\text{jet}}(J_2)$"),
             fill_hist("Jet1_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_1)$"),
@@ -380,30 +382,20 @@ def histogram(filename, helper, with_constituents=True, debug=False):
             fill_hist("Jet2_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_2)$"),
             fill_hist("Jet1_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_1)$"),
             fill_hist("Jet2_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_2)$"),
-            fill_hist("DHJet1_radius",50,0,1,r"${\Delta}R(J_1^{\text{DH}})$",qtys),
-            fill_hist("DHJet2_radius",50,0,1,r"${\Delta}R(J_2^{\text{DH}})$",qtys),
-            fill_hist("DHJet_radius",50,0,1,r"${\Delta}R(J_{1,2}^{\text{DH}})$",qtys),
-            fill_hist("DHVJet1_radius",50,0,1,r"${\Delta}R(J_1^{\text{vis}})$",qtys),
-            fill_hist("DHVJet2_radius",50,0,1,r"${\Delta}R(J_2^{\text{vis}})$",qtys),
-            fill_hist("DHVJet_radius",50,0,1,r"${\Delta}R(J_{1,2}^{\text{vis}})$",qtys),
-            fill_hist("DHJet1_girth",50,0,1,r"$g_{\text{jet}}(J_1^{\text{DH}})$",qtys),
-            fill_hist("DHJet2_girth",50,0,1,r"$g_{\text{jet}}(J_2^{\text{DH}})$",qtys),
-            fill_hist("DHJet_girth",50,0,1,r"$g_{\text{jet}}(J_{1,2}^{\text{DH}})$",qtys),
-            fill_hist("DHVJet1_girth",50,0,1,r"$g_{\text{jet}}(J_1^{\text{vis}})$",qtys),
-            fill_hist("DHVJet2_girth",50,0,1,r"$g_{\text{jet}}(J_2^{\text{vis}})$",qtys),
-            fill_hist("DHVJet_girth",50,0,1,r"$g_{\text{jet}}(J_{1,2}^{\text{vis}})$",qtys),
-        ])
-    hist_dict.update([
+            fill_hist("DHJet12_radius",50,0,1,r"${\Delta}R(J_{JETIND}^{\text{DH}})$"),
+            fill_hist("DHVJet12_radius",50,0,3,r"${\Delta}R(J_{JETIND}^{\text{vis}})$"),
+            fill_hist("DHJet12_girth",50,0,1,r"$g_{\text{jet}}(J_{JETIND}^{\text{DH}})$"),
+            fill_hist("DHVJet12_girth",50,0,1,r"$g_{\text{jet}}(J_{JETIND}^{\text{vis}})$"),
+        ]))
+    hist_dict.update(chain.from_iterable([
         fill_hist("Jet1_sdmass",50,0,250,r"$m_{\text{SD}}(J_1)$ [GeV]"),
         fill_hist("Jet2_sdmass",50,0,250,r"$m_{\text{SD}}(J_2)$ [GeV]"),
         fill_hist("Jet1_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T}}(J_1)$ [GeV]"),
         fill_hist("Jet2_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T}}(J_2)$ [GeV]"),
         fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$"),
         fill_hist("mMediator",50,0,mmed*1.5,r"$m_{\text{mediator}}$ [GeV]"),
-        fill_hist("DHJet1_rinv",25,0,1,r"$\widetilde{r}_{\text{inv}}(J_1^{\text{vis/DH}})$",qtys),
-        fill_hist("DHJet2_rinv",25,0,1,r"$\widetilde{r}_{\text{inv}}(J_2^{\text{vis/DH}})$",qtys),
-        fill_hist("DHJet_rinv",25,0,1,r"$\widetilde{r}_{\text{inv}}(J_{1,2}^{\text{vis/DH}})$",qtys),
-    ])
+        fill_hist("DHJet12_rinv",25,0,1,r"$\widetilde{r}_{\text{inv}}(J_{JETIND}^{\text{vis/DH}})$"),
+    ]))
 
     for t in events.fields:
         if 'tau' not in t: continue
