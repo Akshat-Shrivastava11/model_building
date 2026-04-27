@@ -296,26 +296,25 @@ def histogram(filename, helper, with_constituents=True, debug=False):
             print(f"\n{pre}Jet")
             # pt-weighted percentile per jet
             for pct in dr_pcts:
-                r_pct_pts = []
-                # treat each jet as a slice for consistent dimensionality
-                for ind in [slice(0,1), slice(1,2), slice(0,2)]:
-                    const_dr = deltaR(events[f"{pre}Jet12"][:, ind])
-                    const_px = events[f"{pre}Jet12"][:, ind].Constituents.px
-                    const_py = events[f"{pre}Jet12"][:, ind].Constituents.py
-                    sort_indices = ak.argsort(const_dr, axis=-1)
-                    sorted_dr = const_dr[sort_indices]
-                    sorted_px = const_px[sort_indices]
-                    sorted_py = const_py[sort_indices]
-                    cumul_px = jet_const_cumsum(sorted_px)
-                    cumul_py = jet_const_cumsum(sorted_py)
-                    # running sum of pT within cone
-                    cumul_pt = np.sqrt(cumul_px**2 + cumul_py**2)
-                    # last element of sum is total pT from all constituents
-                    total_pt = ak.fill_none(ak.pad_none(cumul_pt, 1, axis=-1)[:, :, -1], 0)
-                    target_pt = pct/100 * total_pt
-                    mask_pt = cumul_pt >= target_pt
-                    r_pct_pts.append(ak.firsts(sorted_dr[mask_pt], axis=-1))
-                print(f"{pct}% radius (pt-weighted):", ", ".join([f"{np.mean(r_pct_pt):.2} ({np.std(r_pct_pt):.2})" for r_pct_pt in r_pct_pts]))
+                const_dr = deltaR(events[f"{pre}Jet12"])
+                const_px = events[f"{pre}Jet12"].Constituents.px
+                const_py = events[f"{pre}Jet12"].Constituents.py
+                sort_indices = ak.argsort(const_dr, axis=-1)
+                sorted_dr = const_dr[sort_indices]
+                sorted_px = const_px[sort_indices]
+                sorted_py = const_py[sort_indices]
+                cumul_px = jet_const_cumsum(sorted_px)
+                cumul_py = jet_const_cumsum(sorted_py)
+                # running sum of pT within cone
+                cumul_pt = np.sqrt(cumul_px**2 + cumul_py**2)
+                # last element of sum is total pT from all constituents
+                total_pt = ak.fill_none(ak.pad_none(cumul_pt, 1, axis=-1)[:, :, -1], 0)
+                target_pt = pct/100 * total_pt
+                mask_pt = cumul_pt >= target_pt
+                events[f"{pre}Jet12_radius{pct}"] = ak.firsts(sorted_dr[mask_pt], axis=-1)
+                print(f"{pct}% radius (pt-weighted):", ", ".join(
+                    [f"{np.mean(r_pct_pt):.2} ({np.std(r_pct_pt):.2})" for r_pct_pt in [events[f"{pre}Jet12_radius{pct}"][:, ind] for ind in jet_inds]]
+                ))
 
             # also compute girth
             events[f"{pre}Jet12_girth"] = calculate_girth(events[f"{pre}Jet12"])
@@ -378,8 +377,12 @@ def histogram(filename, helper, with_constituents=True, debug=False):
             fill_hist("Jet12_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_{JETIND})$"),
             fill_hist("Jet12_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_{JETIND})$"),
             fill_hist("Jet12_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_{JETIND})$"),
-            fill_hist("DHJet12_radius",50,0,1,r"${\Delta}R(J_{JETIND}^{\text{DH}})$"),
-            fill_hist("DHVJet12_radius",50,0,3,r"${\Delta}R(J_{JETIND}^{\text{vis}})$"),
+            fill_hist("DHJet12_radius90",50,0,1,r"${\Delta}R_{90}(J_{JETIND}^{\text{DH}})$"),
+            fill_hist("DHVJet12_radius90",50,0,1,r"${\Delta}R_{90}(J_{JETIND}^{\text{vis}})$"),
+            fill_hist("DHJet12_radius95",50,0,1,r"${\Delta}R_{95}(J_{JETIND}^{\text{DH}})$"),
+            fill_hist("DHVJet12_radius95",50,0,1,r"${\Delta}R_{95}(J_{JETIND}^{\text{vis}})$"),
+            fill_hist("DHJet12_radius99",50,0,1,r"${\Delta}R_{99}(J_{JETIND}^{\text{DH}})$"),
+            fill_hist("DHVJet12_radius99",50,0,1,r"${\Delta}R_{99}(J_{JETIND}^{\text{vis}})$"),
             fill_hist("DHJet12_girth",50,0,1,r"$g_{\text{jet}}(J_{JETIND}^{\text{DH}})$"),
             fill_hist("DHVJet12_girth",50,0,1,r"$g_{\text{jet}}(J_{JETIND}^{\text{vis}})$"),
         ]))
