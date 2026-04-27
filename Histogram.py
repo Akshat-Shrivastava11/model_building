@@ -11,16 +11,8 @@ from itertools import chain
 def ET(vec):
     return np.sqrt(vec.px**2+vec.py**2+vec.mass**2)
 
-def normalize_angle(angle):
-    angle = np.mod(angle, 2 * np.pi)
-    angle = np.where(angle >= np.pi, angle - 2 * np.pi, angle)
-    return angle
-
 def deltaR(jet):
-    deta_particle = np.abs(jet.eta-jet.Constituents.eta)
-    dphi_particle = np.abs(normalize_angle(jet.phi-jet.Constituents.phi))
-    dR = np.sqrt(deta_particle**2+dphi_particle**2)
-    return dR
+    return jet.deltaR(jet.Constituents)
 
 def calculate_girth(jet):
     particle_dR = deltaR(jet)
@@ -39,7 +31,7 @@ def calculate_ptD(jet):
 def calc_axis1_axis2(jet):
     jet_constpt = jet.Constituents.pt
     deta_particle = np.abs(jet.eta-jet.Constituents.eta)
-    dphi_particle = np.abs(normalize_angle(jet.phi-jet.Constituents.phi))
+    dphi_particle = np.abs(jet.deltaphi(jet.Constituents))
 
     # Calculate weights (pt^2) for each constituent
     weights_pt = jet_constpt**2
@@ -74,11 +66,10 @@ def calc_axis1_axis2(jet):
     return axis1, axis2
 
 def getTau(events):
-    for j in ['Jet1', 'Jet2']:
-        # we have tau1 to tau5
-        for i in range(1,6):
-            events[j+'_tau{:d}'.format(i)] = events[j].Tau_5[:,i-1]
-            if i != 1: events[j+'_tau{:d}{:d}'.format(i, i-1)] = events[j+'_tau{:d}'.format(i)] / events[j+'_tau{:d}'.format(i-1)]
+    # we have tau1 to tau5
+    for i in range(1,6):
+        events[f"Jet12_tau{i}"] = events["Jet12"].Tau_5[:,:,i-1]
+        if i != 1: events[f"Jet12_tau{i}{i-1}"] = events[f"Jet12_tau{i}"] / events[f"Jet12_tau{i-1}"]
     return events
 
 def calc_rinv(events, helper, debug):
@@ -225,41 +216,26 @@ def histogram(filename, helper, with_constituents=True, debug=False):
     events["MET"] = events.MissingET.MET
 
     ## For plotting individually for jet1 and jet2
-
-    events["Jet1"] = events.FatJet[:,0]
-    events["Jet2"] = events.FatJet[:,1]
+    events["Jet12"] = events.FatJet[:,0:2]
 
     # 4-vectors for jet1 and jet2
-    events["Jet1_pt"] = events["Jet1"].pt
-    events["Jet2_pt"] = events["Jet2"].pt
+    events["Jet12_pt"] = events["Jet12"].pt
+    events["Jet12_eta"] = events["Jet12"].eta
+    events["Jet12_phi"] = events["Jet12"].phi
+    events["Jet12_mass"] = events["Jet12"].mass
 
-    events["Jet1_eta"] = events["Jet1"].eta
-    events["Jet2_eta"] = events["Jet2"].eta
+    events["DeltaEta"] = np.abs(events["Jet12_eta"][:,0] - events["Jet12_eta"][:,1])
+    events["DeltaPhi"] = np.abs(events["Jet12"][:,0].deltaphi(events["Jet12"][:,1]))
 
-    events["Jet1_phi"] = events["Jet1"].phi
-    events["Jet2_phi"] = events["Jet2"].phi
-
-    events["Jet1_mass"] = events["Jet1"].mass
-    events["Jet2_mass"] = events["Jet2"].mass
-
-    events["DeltaEta"] = np.abs(events["Jet2_eta"] - events["Jet1_eta"])
-    events["DeltaPhi"] = np.abs(normalize_angle(events["Jet1_phi"] - events["Jet2_phi"]))
-
-    events["DeltaPhi_MET_Jet1"] = np.abs(normalize_angle(events.MissingET.phi - events["Jet1_phi"]))
-    events["DeltaPhi_MET_Jet2"] = np.abs(normalize_angle(events.MissingET.phi - events["Jet2_phi"]))
+    events["DeltaPhi_MET_Jet12"] = np.abs(events.MissingET.deltaphi(events["Jet12"]))
 
     # add substructure quantities
     if with_constituents:
-        events["Jet1_girth"] = calculate_girth(events["Jet1"])
-        events["Jet2_girth"] = calculate_girth(events["Jet2"])
-        events["Jet1_ptD"] = calculate_ptD(events["Jet1"])
-        events["Jet2_ptD"] = calculate_ptD(events["Jet2"])
-        events["Jet1_majoraxis"], events["Jet1_minoraxis"] = calc_axis1_axis2(events["Jet1"])
-        events["Jet2_majoraxis"], events["Jet2_minoraxis"] = calc_axis1_axis2(events["Jet2"])
-    events["Jet1_sdmass"] = events["Jet1"].SoftDroppedJet.mass
-    events["Jet2_sdmass"] = events["Jet2"].SoftDroppedJet.mass
-    events["Jet1_sdpt"] = events["Jet1"].SoftDroppedJet.pt
-    events["Jet2_sdpt"] = events["Jet2"].SoftDroppedJet.pt
+        events["Jet12_girth"] = calculate_girth(events["Jet12"])
+        events["Jet12_ptD"] = calculate_ptD(events["Jet12"])
+        events["Jet12_majoraxis"], events["Jet12_minoraxis"] = calc_axis1_axis2(events["Jet12"])
+    events["Jet12_sdmass"] = events["Jet12"].SoftDroppedJet.mass
+    events["Jet12_sdpt"] = events["Jet12"].SoftDroppedJet.pt
 
     events = getTau(events)
 
@@ -358,40 +334,29 @@ def histogram(filename, helper, with_constituents=True, debug=False):
         fill_hist("Dijet_eta",50,-10,10,r"$\eta(JJ)$ [GeV]"),
         fill_hist("Dijet_phi",25,-3.15,3.15,r"$\phi(JJ)$"),
         fill_hist("Dijet_mass",50,0,mmed*1.5,r"$m_{JJ}$ [GeV]"),
-        fill_hist("Jet1_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_1)$ [GeV]"),
-        fill_hist("Jet2_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_2)$ [GeV]"),
-        fill_hist("Jet1_eta",50,-6,6,r"$\eta(J_1)$"),
-        fill_hist("Jet2_eta",50,-6,6,r"$\eta(J_2)$"),
-        fill_hist("Jet1_phi",25,-3.15,3.15,r"$\phi(J_1)$"),
-        fill_hist("Jet2_phi",25,-3.15,3.15,r"$\phi(J_2)$"),
-        fill_hist("Jet1_mass",50,0,250,r"$m_{J_1}$ [GeV]"),
-        fill_hist("Jet2_mass",50,0,250,r"$m_{J_2}$ [GeV]"),
+        fill_hist("Jet12_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_{JETIND})$ [GeV]"),
+        fill_hist("Jet12_eta",50,-6,6,r"$\eta(J_{JETIND})$"),
+        fill_hist("Jet12_phi",25,-3.15,3.15,r"$\phi(J_{JETIND})$"),
+        fill_hist("Jet12_mass",50,0,250,r"$m_{J_{JETIND}}$ [GeV]"),
         fill_hist("MET",50,0,mmed*0.75,r"$p_{\text{T}}^{\text{miss}}$ [GeV]"),
         fill_hist("DeltaEta",35,0,8.0,r"$\Delta\eta(JJ)$"),
         fill_hist("DeltaPhi",20,0,3.15,r"$\Delta\phi(JJ)$"),
-        fill_hist("DeltaPhi_MET_Jet1",25,0,3.15,r"$\Delta\phi(J_1,p_{\text{T}}^{\text{miss}})$"),
-        fill_hist("DeltaPhi_MET_Jet2",25,0,3.15,r"$\Delta\phi(J_2,p_{\text{T}}^{\text{miss}})$"),
+        fill_hist("DeltaPhi_MET_Jet12",25,0,3.15,r"$\Delta\phi(J_{JETIND},p_{\text{T}}^{\text{miss}})$"),
     ]))
     if with_constituents:
         hist_dict.update(chain.from_iterable([
-            fill_hist("Jet1_girth",50,0,1,r"$g_{\text{jet}}(J_1)$"),
-            fill_hist("Jet2_girth",50,0,1,r"$g_{\text{jet}}(J_2)$"),
-            fill_hist("Jet1_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_1)$"),
-            fill_hist("Jet2_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_2)$"),
-            fill_hist("Jet1_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_1)$"),
-            fill_hist("Jet2_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_2)$"),
-            fill_hist("Jet1_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_1)$"),
-            fill_hist("Jet2_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_2)$"),
+            fill_hist("Jet12_girth",50,0,1,r"$g_{\text{jet}}(J_{JETIND})$"),
+            fill_hist("Jet12_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_{JETIND})$"),
+            fill_hist("Jet12_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_{JETIND})$"),
+            fill_hist("Jet12_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_{JETIND})$"),
             fill_hist("DHJet12_radius",50,0,1,r"${\Delta}R(J_{JETIND}^{\text{DH}})$"),
             fill_hist("DHVJet12_radius",50,0,3,r"${\Delta}R(J_{JETIND}^{\text{vis}})$"),
             fill_hist("DHJet12_girth",50,0,1,r"$g_{\text{jet}}(J_{JETIND}^{\text{DH}})$"),
             fill_hist("DHVJet12_girth",50,0,1,r"$g_{\text{jet}}(J_{JETIND}^{\text{vis}})$"),
         ]))
     hist_dict.update(chain.from_iterable([
-        fill_hist("Jet1_sdmass",50,0,250,r"$m_{\text{SD}}(J_1)$ [GeV]"),
-        fill_hist("Jet2_sdmass",50,0,250,r"$m_{\text{SD}}(J_2)$ [GeV]"),
-        fill_hist("Jet1_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T}}(J_1)$ [GeV]"),
-        fill_hist("Jet2_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T}}(J_2)$ [GeV]"),
+        fill_hist("Jet12_sdmass",50,0,250,r"$m_{\text{SD}}(J_{JETIND})$ [GeV]"),
+        fill_hist("Jet12_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T}}(J_{JETIND})$ [GeV]"),
         fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$"),
         fill_hist("mMediator",50,0,mmed*1.5,r"$m_{\text{mediator}}$ [GeV]"),
         fill_hist("DHJet12_rinv",25,0,1,r"$\widetilde{r}_{\text{inv}}(J_{JETIND}^{\text{vis/DH}})$"),
