@@ -194,6 +194,22 @@ def calc_mt(jet, met):
     MTsq = MTsq.to_numpy(allow_missing=True)
     return np.sqrt(MTsq, where=MTsq>=0)
 
+def jet_const_cumsum(array):
+    counts = ak.num(array, axis=-1)
+    flat_counts = ak.flatten(counts, axis=None)
+    flat_array = ak.flatten(array, axis=None)
+    global_cumsum = np.cumsum(flat_array)
+    offsets = np.zeros(len(flat_counts)+1, dtype=int)
+    offsets[1:] = np.cumsum(flat_counts)
+    start_sums = np.zeros_like(global_cumsum)
+    prev_tot = np.zeros(len(flat_counts))
+    prev_tot[1:] = global_cumsum[offsets[1:-1]-1]
+    subtractions = np.repeat(prev_tot, flat_counts)
+    # unflatten in two stages
+    per_jet_flat = global_cumsum - subtractions
+    jets_unflat = ak.unflatten(per_jet_flat, flat_counts)
+    return ak.unflatten(jets_unflat, ak.num(counts, axis=1))
+
 def histogram(filename, helper, with_constituents=True, debug=False):
     events = load_events(filename, with_constituents=with_constituents)
 
@@ -275,32 +291,31 @@ def histogram(filename, helper, with_constituents=True, debug=False):
 
     if with_constituents:
         # dark jet and visible jet radius
+        dr_pcts = [90,95,99]
         for pre in ["DH", "DHV"]:
             print(f"\n{pre}Jet")
-            events[f"{pre}Jet12_radius"] = ak.max(deltaR(events[f"{pre}Jet12"]), axis=-1)
-            events[f"{pre}Jet12_pt"] = events[f"{pre}Jet12"].pt
-
-            # summary of radius
-            flat_max_drs = [ak.flatten(events[f"{pre}Jet12_radius"][:, ind], axis=None) for ind in jet_inds]
-            dr_pcts = [90,95,99]
-            for pct in dr_pcts:
-                print(f"{pct}% radius:", ", ".join(["{:.2f}".format(np.percentile(max_dr, pct)) for max_dr in flat_max_drs]))
-
-            # pt-weighted percentile
+            # pt-weighted percentile per jet
             for pct in dr_pcts:
                 r_pct_pts = []
-                for ind in jet_inds:
-                    flat_dr = ak.to_numpy(ak.flatten(events[f"{pre}Jet12_radius"][:, ind], axis=None))
-                    flat_pt = ak.to_numpy(ak.flatten(events[f"{pre}Jet12_pt"][:, ind], axis=None))
-                    sort_indices = np.argsort(flat_dr)
-                    sorted_dr = flat_dr[sort_indices]
-                    sorted_pt = flat_pt[sort_indices]
-                    cumulative_pt = np.cumsum(sorted_pt)
-                    total_pt = np.sum(sorted_pt)
+                # treat each jet as a slice for consistent dimensionality
+                for ind in [slice(0,1), slice(1,2), slice(0,2)]:
+                    const_dr = deltaR(events[f"{pre}Jet12"][:, ind])
+                    const_px = events[f"{pre}Jet12"][:, ind].Constituents.px
+                    const_py = events[f"{pre}Jet12"][:, ind].Constituents.py
+                    sort_indices = ak.argsort(const_dr, axis=-1)
+                    sorted_dr = const_dr[sort_indices]
+                    sorted_px = const_px[sort_indices]
+                    sorted_py = const_py[sort_indices]
+                    cumul_px = jet_const_cumsum(sorted_px)
+                    cumul_py = jet_const_cumsum(sorted_py)
+                    # running sum of pT within cone
+                    cumul_pt = np.sqrt(cumul_px**2 + cumul_py**2)
+                    # last element of sum is total pT from all constituents
+                    total_pt = ak.fill_none(ak.pad_none(cumul_pt, 1, axis=-1)[:, :, -1], 0)
                     target_pt = pct/100 * total_pt
-                    index_pct = np.searchsorted(cumulative_pt, target_pt)
-                    r_pct_pts.append(sorted_dr[index_pct])
-                print(f"{pct}% radius (pt-weighted):", ", ".join(["{:.2f}".format(r_pct_pt) for r_pct_pt in r_pct_pts]))
+                    mask_pt = cumul_pt >= target_pt
+                    r_pct_pts.append(ak.firsts(sorted_dr[mask_pt], axis=-1))
+                print(f"{pct}% radius (pt-weighted):", ", ".join([f"{np.mean(r_pct_pt):.2} ({np.std(r_pct_pt):.2})" for r_pct_pt in r_pct_pts]))
 
             # also compute girth
             events[f"{pre}Jet12_girth"] = calculate_girth(events[f"{pre}Jet12"])
