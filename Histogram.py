@@ -186,6 +186,14 @@ def calc_rinv(events, helper, debug):
 
     return stability
 
+def calc_mt(jet, met):
+    # transverse mass calculation
+    E1 = ET(jet)
+    E2 = met.MET
+    MTsq = (E1+E2)**2-(jet.px+met.px)**2-(jet.py+met.py)**2
+    MTsq = MTsq.to_numpy(allow_missing=True)
+    return np.sqrt(MTsq, where=MTsq>=0)
+
 def histogram(filename, helper, with_constituents=True, debug=False):
     events = load_events(filename, with_constituents=with_constituents)
 
@@ -201,11 +209,7 @@ def histogram(filename, helper, with_constituents=True, debug=False):
     events["Dijet"] = events.FatJet[:,0]+events.FatJet[:,1]
 
     # transverse mass calculation
-    E1 = ET(events.Dijet)
-    E2 = events.MissingET.MET
-    MTsq = (E1+E2)**2-(events.Dijet.px+events.MissingET.px)**2-(events.Dijet.py+events.MissingET.py)**2
-    MTsq = MTsq.to_numpy(allow_missing=True)
-    events["MT"] = np.sqrt(MTsq, where=MTsq>=0)
+    events["MT"] = calc_mt(events.Dijet, events.MissingET)
 
     # 4-vectors for dijet
     events["Dijet_pt"] = events.Dijet.pt
@@ -301,6 +305,16 @@ def histogram(filename, helper, with_constituents=True, debug=False):
             # also compute girth
             events[f"{pre}Jet12_girth"] = calculate_girth(events[f"{pre}Jet12"])
 
+    # dark hadron jet mass and pt
+    events["DHJet12_pt"] = events["DHJet12"].pt
+    events["DiDHJet"] = events.DarkHadronJet[:,0] + events.DarkHadronJet[:,1]
+    events["DiDHJet_mass"] = events["DiDHJet"].mass
+
+    events["DHVJet12_pt"] = events["DHVJet12"].pt
+    events["DiDHVJet"] = events.DarkHadronVisibleJet[:,0] + events.DarkHadronVisibleJet[:,1]
+    events["DiDHVJet_mass"] = events["DiDHVJet"].mass
+    events["DiDHVJet_MT"] = calc_mt(events["DiDHVJet"], events.GenMissingET)
+
     # bind events into filling functions
     def fill_single_hist(var,nbins,bmin,bmax,label,ind=None):
         h = (
@@ -360,6 +374,11 @@ def histogram(filename, helper, with_constituents=True, debug=False):
         fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$"),
         fill_hist("mMediator",50,0,mmed*1.5,r"$m_{\text{mediator}}$ [GeV]"),
         fill_hist("DHJet12_rinv",25,0,1,r"$\widetilde{r}_{\text{inv}}(J_{JETIND}^{\text{vis/DH}})$"),
+        fill_hist("DHJet12_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_{JETIND}^{\text{DH}})$ [GeV]"),
+        fill_hist("DHVJet12_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_{JETIND}^{\text{vis}})$ [GeV]"),
+        fill_hist("DiDHJet_mass",50,0,mmed*1.5,r"$m_{\text{J}^{\text{DH}}\text{J}^{\text{DH}}}$ [GeV]"),
+        fill_hist("DiDHVJet_mass",50,0,mmed*1.5,r"$m_{\text{J}^{\text{vis}}\text{J}^{\text{vis}}}$ [GeV]"),
+        fill_hist("DiDHVJet_MT",50,0,mmed*1.5,r"$m_{\text{T}}^{\text{J}^{\text{vis}}\text{J}^{\text{vis}}}$ [GeV]"),
     ]))
 
     for t in events.fields:
