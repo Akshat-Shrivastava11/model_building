@@ -337,8 +337,8 @@ def histogram(filename, helper, with_constituents=True, debug=False):
             .Double()
         )
         event_var = events[var]
-        if ind:
-            event_var = events[var][ind]
+        if ind is not None:
+            event_var = events[var][:,ind]
         h.fill(ak.flatten(event_var,axis=None))
         return h
 
