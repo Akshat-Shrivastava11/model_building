@@ -402,8 +402,10 @@ def histogram(filename, helper, with_constituents=True, debug=False):
     for t in events.fields:
         if 'tau' not in t: continue
         l = t.split('_')
-        label = l[1].replace('tau', '$\\tau_{')+','+l[0].replace('et', '_')+'}$'
-        hist_dict[t] = fill_hist(t,40,0,1,label)
+        label = l[1].replace('tau', '$\\tau_{')+','+l[0].replace('et12', '_{JETIND}')+'}$'
+        hist_dict.update(chain.from_iterable([
+            fill_hist(t,40,0,1,label)
+        ]))
 
     # Saving the histograms
     with open("Hists.pkl", "wb") as out:
