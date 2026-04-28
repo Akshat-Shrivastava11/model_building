@@ -290,6 +290,9 @@ def histogram(filename, helper, with_constituents=True, debug=False):
     ))
 
     if with_constituents:
+        events["DHJet12_nconst"] = ak.num(events["DHJet12"].Constituents, axis=-1)
+        events["DHVJet12_nconst"] = ak.num(events["DHVJet12"].Constituents, axis=-1)
+
         # dark jet and visible jet radius
         dr_pcts = [90,95,99]
         for pre in ["DH", "DHV"]:
@@ -385,6 +388,8 @@ def histogram(filename, helper, with_constituents=True, debug=False):
             fill_hist("DHVJet12_radius99",50,0,1,r"${\Delta}R_{99}(J_{JETIND}^{\text{vis}})$"),
             fill_hist("DHJet12_girth",50,0,1,r"$g_{\text{jet}}(J_{JETIND}^{\text{DH}})$"),
             fill_hist("DHVJet12_girth",50,0,1,r"$g_{\text{jet}}(J_{JETIND}^{\text{vis}})$"),
+            fill_hist("DHJet12_nconst",25,0,25,r"$n_{\text{const}}(J_{JETIND}^{\text{DH}})$"),
+            fill_hist("DHVJet12_nconst",50,0,200,r"$n_{\text{const}}(J_{JETIND}^{\text{vis}})$"),
         ]))
     hist_dict.update(chain.from_iterable([
         fill_hist("Jet12_sdmass",50,0,250,r"$m_{\text{SD}}(J_{JETIND})$ [GeV]"),
