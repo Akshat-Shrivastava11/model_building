@@ -57,7 +57,7 @@ for sample in samples:
     with open(file, "rb") as inp:
         hists_model=pickle.load(inp)                # Dict Contains all the histos for 1 model
 
-    hists[sample["name"]] = hists_model
+    hists[sample["name"]] = hists_model['hist']
 
 # helper to make a plot
 def make_plot(hname):                         # hists is a dict containing

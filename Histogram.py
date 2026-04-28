@@ -72,7 +72,7 @@ def getTau(events):
         if i != 1: events[f"Jet12_tau{i}{i-1}"] = events[f"Jet12_tau{i}"] / events[f"Jet12_tau{i-1}"]
     return events
 
-def calc_rinv(events, helper, debug):
+def calc_rinv(events, helper, meta_dict, debug):
     pid = events.GenParticle["PID"]
 
     def dprint(*args):
@@ -182,7 +182,8 @@ def calc_rinv(events, helper, debug):
     with np.errstate(divide='ignore', invalid='ignore'):
         stability = np.where(denom>0, numer/denom, 0)
     dprint('stability',stability.tolist())
-    print(f"Average computed rinv value = {np.mean(stability):.5} ({np.std(stability):.5})")
+    meta_dict["stability"] = (np.mean(stability), np.std(stability))
+    print(f"Average computed rinv value = {meta_dict['stability'][0]:.5} ({meta_dict['stability'][1]:.5})")
 
     return stability
 
@@ -212,6 +213,7 @@ def jet_const_cumsum(array):
 
 def histogram(filename, helper, with_constituents=True, debug=False):
     events = load_events(filename, with_constituents=with_constituents)
+    meta_dict = {}
 
     # require two jets
     mask = ak.num(events.FatJet)>=2
@@ -276,7 +278,7 @@ def histogram(filename, helper, with_constituents=True, debug=False):
     events["mMediator"] = meds_final.mass
 
     # Add the invisible fraction to the events
-    events["stable_invisible_fraction"] = calc_rinv(events, helper, debug)
+    events["stable_invisible_fraction"] = calc_rinv(events, helper, meta_dict, debug)
 
     # dark hadron jets and corresponding visible jets
     events["DHJet12"] = events.DarkHadronJet[:,0:2]
@@ -284,9 +286,14 @@ def histogram(filename, helper, with_constituents=True, debug=False):
 
     # per-jet calculation of invisible fraction based on pt
     jet_inds = [0, 1, slice(0, 2)]
+    jet_ind_names = ["1","2","1,2"]
+    jet_ind_keys = ["1","2","12"]
     events["DHJet12_rinv"] = 1 - events["DHVJet12"].pt / events["DHJet12"].pt
+    for ind,key in zip(jet_inds, jet_ind_keys):
+        jrinv = events["DHJet12_rinv"][:, ind]
+        meta_dict[f"DHJet{key}_rinv"] = (np.mean(jrinv), np.std(jrinv))
     print("Average jet-level rinv =", ", ".join(
-        [f"{np.mean(jrinv):.5} ({np.std(jrinv):.5})" for jrinv in [events["DHJet12_rinv"][:, ind] for ind in jet_inds]]
+        [f"{meta_dict[f'DHJet{key}_rinv'][0]:.5} ({meta_dict[f'DHJet{key}_rinv'][1]:.5})" for key in jet_ind_keys]
     ))
 
     if with_constituents:
@@ -315,8 +322,11 @@ def histogram(filename, helper, with_constituents=True, debug=False):
                 target_pt = pct/100 * total_pt
                 mask_pt = cumul_pt >= target_pt
                 events[f"{pre}Jet12_radius{pct}"] = ak.firsts(sorted_dr[mask_pt], axis=-1)
+                for ind,key in zip(jet_inds, jet_ind_keys):
+                    r_pct_pt = events[f"{pre}Jet12_radius{pct}"][:, ind]
+                    meta_dict[f"DHJet{key}_radius{pct}"] = (np.mean(r_pct_pt), np.std(r_pct_pt))
                 print(f"{pct}% radius (pt-weighted):", ", ".join(
-                    [f"{np.mean(r_pct_pt):.2} ({np.std(r_pct_pt):.2})" for r_pct_pt in [events[f"{pre}Jet12_radius{pct}"][:, ind] for ind in jet_inds]]
+                    [f"{meta_dict[f'DHJet{key}_radius{pct}'][0]:.2} ({meta_dict[f'DHJet{key}_radius{pct}'][1]:.2})" for key in jet_ind_keys]
                 ))
 
             # also compute girth
@@ -352,8 +362,6 @@ def histogram(filename, helper, with_constituents=True, debug=False):
             return [(var,fill_single_hist(var,nbins,bmin,bmax,label))]
         else:
             results = []
-            jet_ind_names = ["1","2","1,2"]
-            jet_ind_keys = ["1","2","12"]
             for ind,key,name in zip(jet_inds, jet_ind_keys, jet_ind_names):
                 results.append((var.replace("Jet12",f"Jet{key}"), fill_single_hist(var,nbins,bmin,bmax,label.replace("JETIND",name),ind)))
             return results
@@ -412,6 +420,12 @@ def histogram(filename, helper, with_constituents=True, debug=False):
             fill_hist(t,40,0,1,label)
         ]))
 
+    # output dictionary with histograms and metadata
+    output = {}
+    output["hist"] = hist_dict
+    output["model"] = helper.metadata()
+    output["analysis"] = meta_dict
+
     # Saving the histograms
     with open("Hists.pkl", "wb") as out:
-        pickle.dump(hist_dict, out)
+        pickle.dump(output, out)
