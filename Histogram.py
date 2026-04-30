@@ -248,7 +248,7 @@ def histogram(filename, helper, with_constituents=True, debug=False):
     events["MET"] = events.MissingET.MET
 
     ## For plotting individually for jet1 and jet2
-    events["Jet12"] = events.FatJet[:,0:2]
+    events["Jet12"] = ak.pad_none(events.FatJet[:,0:2], target=2, axis=1)
 
     # 4-vectors for jet1 and jet2
     events["Jet12_pt"] = events["Jet12"].pt
@@ -291,8 +291,8 @@ def histogram(filename, helper, with_constituents=True, debug=False):
     events["stable_invisible_fraction"] = calc_rinv(events, helper, meta_dict, debug)
 
     # dark hadron jets and corresponding visible jets
-    events["DHJet12"] = events.DarkHadronJet[:,0:2]
-    events["DHVJet12"] = events.DarkHadronVisibleJet[:,0:2]
+    events["DHJet12"] = ak.pad_none(events.DarkHadronJet[:,0:2], target=2, axis=1)
+    events["DHVJet12"] = ak.pad_none(events.DarkHadronVisibleJet[:,0:2], target=2, axis=1)
 
     # per-jet calculation of invisible fraction based on pt
     jet_inds = [0, 1, slice(0, 2)]
@@ -316,22 +316,23 @@ def histogram(filename, helper, with_constituents=True, debug=False):
             print(f"\n{pre}Jet")
             # pt-weighted percentile per jet
             for pct in dr_pcts:
-                const_dr = deltaR(events[f"{pre}Jet12"])
-                const_px = events[f"{pre}Jet12"].Constituents.px
-                const_py = events[f"{pre}Jet12"].Constituents.py
-                sort_indices = ak.argsort(const_dr, axis=-1)
-                sorted_dr = const_dr[sort_indices]
-                sorted_px = const_px[sort_indices]
-                sorted_py = const_py[sort_indices]
-                cumul_px = jet_const_cumsum(sorted_px)
-                cumul_py = jet_const_cumsum(sorted_py)
+                none_mask = ak.is_none(events[f"{pre}Jet12"], axis=1)
+                const_prop = ak.zip({
+                    'dr': deltaR(events[f"{pre}Jet12"]),
+                    'px': events[f"{pre}Jet12"].Constituents.px,
+                    'py': events[f"{pre}Jet12"].Constituents.py,
+                })[~none_mask]
+                sort_indices = ak.argsort(const_prop.dr, axis=-1)
+                sorted_prop = const_prop[sort_indices]
+                cumul_px = jet_const_cumsum(sorted_prop.px)
+                cumul_py = jet_const_cumsum(sorted_prop.py)
                 # running sum of pT within cone
                 cumul_pt = np.sqrt(cumul_px**2 + cumul_py**2)
                 # last element of sum is total pT from all constituents
                 total_pt = ak.fill_none(ak.pad_none(cumul_pt, 1, axis=-1)[:, :, -1], 0)
                 target_pt = pct/100 * total_pt
                 mask_pt = cumul_pt >= target_pt
-                events[f"{pre}Jet12_radius{pct}"] = ak.firsts(sorted_dr[mask_pt], axis=-1)
+                events[f"{pre}Jet12_radius{pct}"] = ak.pad_none(ak.firsts(sorted_prop[mask_pt].dr, axis=-1), target=2, axis=1)
                 for ind,key in zip(jet_inds, jet_ind_keys):
                     r_pct_pt = events[f"{pre}Jet12_radius{pct}"][:, ind]
                     meta_dict[f"DHJet{key}_radius{pct}"] = fill_stats(r_pct_pt)
@@ -344,11 +345,11 @@ def histogram(filename, helper, with_constituents=True, debug=False):
 
     # dark hadron jet mass and pt
     events["DHJet12_pt"] = events["DHJet12"].pt
-    events["DiDHJet"] = events.DarkHadronJet[:,0] + events.DarkHadronJet[:,1]
+    events["DiDHJet"] = events["DHJet12"][:,0] + events["DHJet12"][:,1]
     events["DiDHJet_mass"] = events["DiDHJet"].mass
 
     events["DHVJet12_pt"] = events["DHVJet12"].pt
-    events["DiDHVJet"] = events.DarkHadronVisibleJet[:,0] + events.DarkHadronVisibleJet[:,1]
+    events["DiDHVJet"] = events["DHVJet12"][:,0] + events["DHVJet12"][:,1]
     events["DiDHVJet_mass"] = events["DiDHVJet"].mass
     events["DiDHVJet_MT"] = calc_mt(events["DiDHVJet"], events.GenMissingET)
 
