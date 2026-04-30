@@ -7,6 +7,7 @@ from coffea.nanoevents import NanoEventsFactory
 from common import load_events
 from collections import defaultdict
 from itertools import chain
+from scipy.stats import sem
 
 def ET(vec):
     return np.sqrt(vec.px**2+vec.py**2+vec.mass**2)
@@ -182,8 +183,8 @@ def calc_rinv(events, helper, meta_dict, debug):
     with np.errstate(divide='ignore', invalid='ignore'):
         stability = np.where(denom>0, numer/denom, 0)
     dprint('stability',stability.tolist())
-    meta_dict["stability"] = (np.mean(stability), np.std(stability))
-    print(f"Average computed rinv value = {meta_dict['stability'][0]:.5} ({meta_dict['stability'][1]:.5})")
+    meta_dict["stability"] = fill_stats(stability)
+    print(f"Average computed rinv value = {meta_dict['stability']['mean']:.5} ({meta_dict['stability']['stdev']:.5})")
 
     return stability
 
@@ -210,6 +211,15 @@ def jet_const_cumsum(array):
     per_jet_flat = global_cumsum - subtractions
     jets_unflat = ak.unflatten(per_jet_flat, flat_counts)
     return ak.unflatten(jets_unflat, ak.num(counts, axis=1))
+
+def fill_stats(array):
+    nparray = ak.to_numpy(ak.flatten(array, axis=None))
+    return {
+        "N": len(nparray),
+        "mean": np.mean(nparray),
+        "stdev": np.std(nparray),
+        "stderr": sem(nparray),
+    }
 
 def histogram(filename, helper, with_constituents=True, debug=False):
     events = load_events(filename, with_constituents=with_constituents)
@@ -291,9 +301,9 @@ def histogram(filename, helper, with_constituents=True, debug=False):
     events["DHJet12_rinv"] = 1 - events["DHVJet12"].pt / events["DHJet12"].pt
     for ind,key in zip(jet_inds, jet_ind_keys):
         jrinv = events["DHJet12_rinv"][:, ind]
-        meta_dict[f"DHJet{key}_rinv"] = (np.mean(jrinv), np.std(jrinv))
+        meta_dict[f"DHJet{key}_rinv"] = fill_stats(jrinv)
     print("Average jet-level rinv =", ", ".join(
-        [f"{meta_dict[f'DHJet{key}_rinv'][0]:.5} ({meta_dict[f'DHJet{key}_rinv'][1]:.5})" for key in jet_ind_keys]
+        [f"{meta_dict[f'DHJet{key}_rinv']['mean']:.5} ({meta_dict[f'DHJet{key}_rinv']['stdev']:.5})" for key in jet_ind_keys]
     ))
 
     if with_constituents:
@@ -324,9 +334,9 @@ def histogram(filename, helper, with_constituents=True, debug=False):
                 events[f"{pre}Jet12_radius{pct}"] = ak.firsts(sorted_dr[mask_pt], axis=-1)
                 for ind,key in zip(jet_inds, jet_ind_keys):
                     r_pct_pt = events[f"{pre}Jet12_radius{pct}"][:, ind]
-                    meta_dict[f"DHJet{key}_radius{pct}"] = (np.mean(r_pct_pt), np.std(r_pct_pt))
+                    meta_dict[f"DHJet{key}_radius{pct}"] = fill_stats(r_pct_pt)
                 print(f"{pct}% radius (pt-weighted):", ", ".join(
-                    [f"{meta_dict[f'DHJet{key}_radius{pct}'][0]:.2} ({meta_dict[f'DHJet{key}_radius{pct}'][1]:.2})" for key in jet_ind_keys]
+                    [f"{meta_dict[f'DHJet{key}_radius{pct}']['mean']:.2} ({meta_dict[f'DHJet{key}_radius{pct}']['stdev']:.2})" for key in jet_ind_keys]
                 ))
 
             # also compute girth
