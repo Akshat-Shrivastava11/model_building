@@ -45,9 +45,10 @@ mpl.rcParams.update({
 # based on https://github.com/mpetroff/accessible-color-cycles
 # red, blue, mauve, orange, purple, gray,
 colors = ["#e42536", "#5790fc", "#964a8b", "#f89c20", "#7a21dd", "#9c9ca1"]
-mpl.rcParams['axes.prop_cycle'] = mpl.cycler(color=colors)
 
-
+# last two are dashdotdot and dashdashdot
+lines = ["solid", "dashed", "dotted", "dashdot", (0, (3, 5, 1, 5, 1, 5)), (0, (3, 5, 3, 5, 1, 5))]
+custom_cycler = mpl.cycler(color=colors) + mpl.cycler(linestyle=lines)
 
 hists = {}      # Contains the lists of histos for all models
 
@@ -62,7 +63,9 @@ for sample in samples:
 # helper to make a plot
 def make_plot(hname):                         # hists is a dict containing
     fig, ax = plt.subplots(figsize=(8,6))
-    for l,h in hists.items():                       # h is a list of hist objects
+    ax.set_prop_cycle(custom_cycler)
+    for i,(l,h) in enumerate(hists.items()):                       # h is a list of hist objects
+        if not hname in h: return
         hep.histplot(h[hname],density=True,ax=ax,label=l,flow="none",yerr=0)
     ax.set_xlim(h[hname].axes[0].edges[0],h[hname].axes[0].edges[-1])
     ax.set_yscale("log")
