@@ -5,6 +5,7 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 import mplhep as hep
 import pickle
+from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
 
 samples = [
     #{"name": r"CMS", "model": "s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_rinv-0.3/"}
@@ -61,7 +62,7 @@ for sample in samples:
     hists[sample["name"]] = hists_model['hist']
 
 # helper to make a plot
-def make_plot(hname):                         # hists is a dict containing
+def make_plot(hname,outdir):
     fig, ax = plt.subplots(figsize=(8,6))
     ax.set_prop_cycle(custom_cycler)
     for i,(l,h) in enumerate(hists.items()):                       # h is a list of hist objects
@@ -71,14 +72,19 @@ def make_plot(hname):                         # hists is a dict containing
     ax.set_yscale("log")
     ax.set_ylabel("Arbitrary units")
     ax.legend(framealpha=0.5)
-    outdir = "All_plots"
-    os.makedirs(outdir,exist_ok=True)
     plt.savefig('{}/{}.pdf'.format(outdir,hname),bbox_inches='tight')
     plt.close(fig)
 
-def make_all_plots():
+def make_all_plots(outdir):
+    os.makedirs(outdir,exist_ok=True)
     for hname in hists[samples[0]["name"]]:
-        make_plot(hname)
+        make_plot(hname,outdir)
 
 if __name__=="__main__":
-    make_all_plots()
+    parser = ArgumentParser(
+        formatter_class=ArgumentDefaultsRawHelpFormatter
+    )
+    parser.add_argument("--dir", type=str, default="All_plots", help="output directory")
+    args = parser.parse_args()
+
+    make_all_plots(args.dir)
