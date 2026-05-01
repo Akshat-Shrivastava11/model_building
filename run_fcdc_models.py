@@ -1,16 +1,26 @@
 import os, sys, imp
+from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
 
 config_dir = os.path.join(os.getcwd(), "configs")
 sys.path.append(config_dir)
 
-nEvents = 1000
-config_name = "configs/model_fcdc_10.py"
-configs_fcdc = imp.load_source("configs_fcdc", config_name)
-objs = [obj for obj in vars(configs_fcdc.config)]
+def run_objs(config_name, args, dryrun):
+    configs_fcdc = imp.load_source("configs_fcdc", config_name)
+    objs = [obj for obj in vars(configs_fcdc.config)]
 
-for obj in objs:
-    logName = f'model_{obj}'
-    print(obj)
-    cmd = f'./run_model helper -C {config_name} -O {obj} --dir models/fcdc --steps all --events {nEvents} --verbose > models/fcdc/{logName}.log'
-    print(cmd)
-    os.system(cmd)
+    for obj in objs:
+        logName = f'model_{obj}'
+        print(obj)
+        cmd = f'./run_model helper -C {config_name} -O {obj} {args} > models/fcdc/{logName}.log'
+        print(cmd)
+        if not dryrun: os.system(cmd)
+
+if __name__=="__main__":
+    parser = ArgumentParser(
+        formatter_class=ArgumentDefaultsRawHelpFormatter
+    )
+    parser.add_argument("--config-name", type=str, default="configs/model_fcdc_10.py", help="config file containing multiple models")
+    parser.add_argument("--args", type=str, default="--dir models/fcdc --steps all --events 1000 --verbose", help="arguments to pass to run_model")
+    parser.add_argument("--dryrun", default=False, action="store_true", help="print commands but don't run")
+    args = parser.parse_args()
+    run_objs(args.config_name, args.args, args.dryrun)
