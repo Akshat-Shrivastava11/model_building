@@ -35,6 +35,13 @@ def masses_snowmass(*, config, scale, mpi_over_scale):
 def gchi_lhcdm(*, gDM, Nc, Nf):
     return gDM/math.sqrt(Nc*Nf)
 
+# rinv calculation for FCDC complete model
+# neglects eta prime meson: assumed to be heavy (from anomaly), therefore rarely produced
+def fcdc_rinv(*, Nf, Ns):
+    Nu = Nf-Ns
+    rinv = (Nf*(Nf-1) - Nu*(Nu-1)) / (Nf**2 - 1)
+    return rinv
+
 # create a single fcdc config using input numbers
 def fcdc_config(*, common, Nc, Nf, Ns):
     configName = 'Nc{:d}Nf{:d}Ns{:d}'.format(Nc, Nf, Ns)
@@ -42,8 +49,15 @@ def fcdc_config(*, common, Nc, Nf, Ns):
     config.join(common)
     return configName, config
 
+# create simplified equivalent of above using input rinv
+def fcdc_config_simp(*, common, rinv):
+    configName = 'rinv{:.3f}'.format(rinv).replace('.','p')
+    config = MagiConfig(rinv=rinv)
+    config.join(common)
+    return configName, config
+
 # create spread of fcdc configs for Nc=Nf case
-def fcdc_configs_NcNf1(*, common):
+def fcdc_configs_NcNf1(*, common, simp=False):
     Nf_min = 3
     Nf_max = 8
     Ns_min = 1
@@ -52,7 +66,10 @@ def fcdc_configs_NcNf1(*, common):
     for Nf_val in range(Nf_min,Nf_max+1):
         Ns_max = Nf_val - 2
         for Ns_val in range(Ns_min, Ns_max+1):
-            this_name, this_config = fcdc_config(common=common, Nc=Nf_val, Nf=Nf_val, Ns=Ns_val)
+            if simp:
+                this_name, this_config = fcdc_config_simp(common=common, rinv=fcdc_rinv(Nf=Nf_val, Ns=Ns_val))
+            else:
+                this_name, this_config = fcdc_config(common=common, Nc=Nf_val, Nf=Nf_val, Ns=Ns_val)
             setattr(config, this_name, this_config)
     return config
 
@@ -638,6 +655,8 @@ class svjHelper(baseHelper):
         metadict["darkHadronFinalIDs"] = self.darkHadronFinalIDs
         if self.rinv is not None:
             metadict["rinv"] = self.rinv
+        if self.Ns is not None:
+            metadict["rinv_fcdc"] = fcdc_rinv(Nf=self.Nf, Ns=self.Ns)
         return metadict
 
     def getPythiaSettings(self):
