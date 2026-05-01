@@ -11,7 +11,7 @@ def run_objs(config_name, args, dryrun):
     for obj in objs:
         logName = f'model_{obj}'
         print(obj)
-        cmd = f'./run_model helper -C {config_name} -O {obj} {args} > models/fcdc/{logName}.log'
+        cmd = f'./run_model helper -C {config_name} -O config.{obj} {args} > models/fcdc/{logName}.log'
         print(cmd)
         if not dryrun: os.system(cmd)
 
