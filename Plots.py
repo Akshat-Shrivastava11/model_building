@@ -62,29 +62,30 @@ for sample in samples:
     hists[sample["name"]] = hists_model['hist']
 
 # helper to make a plot
-def make_plot(hname,outdir):
+def make_plot(hname,outdir,liny=False):
     fig, ax = plt.subplots(figsize=(8,6))
     ax.set_prop_cycle(custom_cycler)
     for i,(l,h) in enumerate(hists.items()):                       # h is a list of hist objects
         if not hname in h: return
         hep.histplot(h[hname],density=True,ax=ax,label=l,flow="none",yerr=0)
     ax.set_xlim(h[hname].axes[0].edges[0],h[hname].axes[0].edges[-1])
-    ax.set_yscale("log")
+    if not liny: ax.set_yscale("log")
     ax.set_ylabel("Arbitrary units")
     ax.legend(framealpha=0.5)
     plt.savefig('{}/{}.pdf'.format(outdir,hname),bbox_inches='tight')
     plt.close(fig)
 
-def make_all_plots(outdir):
+def make_all_plots(outdir, liny):
     os.makedirs(outdir,exist_ok=True)
     for hname in hists[samples[0]["name"]]:
-        make_plot(hname,outdir)
+        make_plot(hname,outdir,liny=any([x in hname for x in liny]))
 
 if __name__=="__main__":
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsRawHelpFormatter
     )
     parser.add_argument("--dir", type=str, default="All_plots", help="output directory")
+    parser.add_argument("--liny", type=str, default=[], nargs='*', help="plot histograms with matching names in linear scale")
     args = parser.parse_args()
 
-    make_all_plots(args.dir)
+    make_all_plots(args.dir, args.liny)

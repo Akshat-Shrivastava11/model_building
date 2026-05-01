@@ -407,11 +407,11 @@ def histogram(filename, helper, with_constituents=True, debug=False):
             fill_hist("DHVJet12_radius99",50,0,1,r"${\Delta}R_{99}(J_{JETIND}^{\text{vis}})$"),
             fill_hist("DHJet12_girth",50,0,1,r"$g_{\text{jet}}(J_{JETIND}^{\text{DH}})$"),
             fill_hist("DHVJet12_girth",50,0,1,r"$g_{\text{jet}}(J_{JETIND}^{\text{vis}})$"),
-            fill_hist("DHJet12_nconst",25,0,25,r"$n_{\text{const}}(J_{JETIND}^{\text{DH}})$"),
-            fill_hist("DHVJet12_nconst",50,0,200,r"$n_{\text{const}}(J_{JETIND}^{\text{vis}})$"),
+            fill_hist("DHJet12_nconst",25,-0.5,24.5,r"$n_{\text{const}}(J_{JETIND}^{\text{DH}})$"),
+            fill_hist("DHVJet12_nconst",50,-0.5,199.5,r"$n_{\text{const}}(J_{JETIND}^{\text{vis}})$"),
         ]))
     hist_dict.update(chain.from_iterable([
-        fill_hist("Jet12_sdmass",50,0,250,r"$m_{\text{SD}}(J_{JETIND})$ [GeV]"),
+        fill_hist("Jet12_sdmass",50,0,150,r"$m_{\text{SD}}(J_{JETIND})$ [GeV]"),
         fill_hist("Jet12_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T}}(J_{JETIND})$ [GeV]"),
         fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$"),
         fill_hist("mMediator",50,0,mmed*1.5,r"$m_{\text{mediator}}$ [GeV]"),
