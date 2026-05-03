@@ -52,7 +52,7 @@ def stat_plot(qname, outdir):
     props = iter(custom_cycler)
     for sample, models in data.items():
         style = next(props)
-        xvals = np.array([model['model']['rinv_fcdc'] if 'rinv_fcdc' in model['model'] else model['model']['rinv'] for model in models])
+        xvals = np.array([model['model']['rinv'] for model in models])
         means, stdevs, stderrs = zip(*[
             (model['analysis'][qname]['mean'], model['analysis'][qname]['stdev'], model['analysis'][qname]['stderr']) for model in models
         ])

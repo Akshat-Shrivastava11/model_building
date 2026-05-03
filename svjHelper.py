@@ -73,6 +73,71 @@ def fcdc_configs_NcNf1(*, common, simp=False):
             setattr(config, this_name, this_config)
     return config
 
+# 3-body functions
+
+def alpha_numeric(*, mrho, mpi, mq):
+    # numerical computation of alpha = <E_pi>/<E_rho> from 3-body phase-space integrals
+    import numpy as np
+    from scipy import integrate
+
+    s_min = 4.0 * mq * mq
+    s_max = (mrho - mpi)**2
+
+    if s_max <= s_min:
+        return 1.0  # no phase space
+
+    def lam(a, b, c):
+        return a*a + b*b + c*c - 2.0*(a*b + a*c + b*c)
+
+    def weight_D(s):
+        L1 = lam(mrho*mrho, mpi*mpi, s)
+        L2 = lam(s, mq*mq, mq*mq)
+        return np.sqrt(L1 * L2) / s
+
+    def weight_I1(s):
+        L1 = lam(mrho*mrho, mpi*mpi, s)
+        L2 = lam(s, mq*mq, mq*mq)
+        return np.sqrt(L1 * L2)
+
+    D_val, _ = integrate.quad(weight_D, s_min, s_max, limit=200)
+    I1_val, _ = integrate.quad(weight_I1, s_min, s_max, limit=200)
+
+    alpha = (mrho*mrho + mpi*mpi)/(2.0*mrho*mrho) - I1_val/(2.0*mrho*mrho*D_val)
+
+    return alpha
+
+# average alpha over all allowed q qbar decays
+def alpha_mean(*, mrho, mpi):
+    import numpy as np
+    quarks = quarklist()
+    quarks.set(mrho - mpi)
+    theQuarks = quarks.get()
+    alpha = np.mean([alpha_numeric(mrho=mrho, mpi=mpi, mq=q.mass) for q in theQuarks])
+    return alpha
+
+def fcdc_rinv_3body(*, Nf, Ns, mrho, mpi, pvector):
+    # off-diagonal pi w/ no FCDC: stable
+    # off-diagonal rho w/ no FCDC: decay to pi q qbar (pi stable)
+    # all others decay to q qbar (mass insertion or democratic)
+
+    Nu = Nf-Ns
+    Nstable = Nf*(Nf-1) - Nu*(Nu-1)
+    Npi = Nf**2-1 # neglect eta prime
+    Nrho = Nf**2
+
+    numer_pi = (1-pvector)*Nstable
+    numer_rho = alpha_mean(mrho=mrho, mpi=mpi)*pvector*Nstable
+    denom_pi = (1-pvector)*Npi
+    denom_rho = pvector*Nrho
+
+    rinv = (numer_pi + numer_rho) / (denom_pi + denom_rho)
+    return rinv
+
+def fcdc_rinv_3body_simp(*, rinv, mrho, mpi, pvector):
+    # simplified model does not use separateFlav: pi and rho have equal frequencies
+    rinv_eff = (1-pvector)*rinv + alpha_mean(mrho=mrho, mpi=mpi)*pvector*rinv
+    return rinv_eff
+
 # classes for helper
 
 class quark(object):
@@ -655,8 +720,12 @@ class svjHelper(baseHelper):
         metadict["darkHadronFinalIDs"] = self.darkHadronFinalIDs
         if self.rinv is not None:
             metadict["rinv"] = self.rinv
+            if self.mrho < 2*self.mpi:
+                metadict["rinv_3body"] = fcdc_rinv_3body_simp(rinv=self.rinv, mrho=self.mrho, mpi=self.mpi, pvector=self.pvector)
         if self.Ns is not None:
-            metadict["rinv_fcdc"] = fcdc_rinv(Nf=self.Nf, Ns=self.Ns)
+            metadict["rinv"] = fcdc_rinv(Nf=self.Nf, Ns=self.Ns)
+            if self.mrho < 2*self.mpi:
+                metadict["rinv_3body"] = fcdc_rinv_3body(Nf=self.Nf, Ns=self.Ns, mrho=self.mrho, mpi=self.mpi, pvector=self.pvector)
         return metadict
 
     def getPythiaSettings(self):
