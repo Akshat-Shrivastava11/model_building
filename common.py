@@ -10,11 +10,13 @@ DelphesSchema.mixins.update({
     "ParticleFlowCandidate": "Particle",
     "DarkHadronCandidate": "Particle",
     "GenCandidate": "Particle",
+    "GenStableCandidate": "Particle",
     "GenParticle": "Particle",
     "FatJet": "Jet",
     "GenFatJet": "Jet",
     "DarkHadronJet": "Jet",
     "DarkHadronVisibleJet": "Jet",
+    "DarkHadronStableJet": "Jet",
 })
 
 # workaround for https://cp3.irmp.ucl.ac.be/projects/delphes/ticket/1170
@@ -23,6 +25,7 @@ def fix_delphes_mass_units(events):
     GenParticleCollections = [
         "GenParticle",
         "GenCandidate",
+        "GenStableCandidate",
         "DarkHadronCandidate",
     ]
     for col in GenParticleCollections:
@@ -35,6 +38,7 @@ class DelphesSchema2(DelphesSchema):
         "Jet" : "ParticleFlowCandidate",
         "DarkHadronJet" : "DarkHadronCandidate",
         "DarkHadronVisibleJet": "GenCandidate",
+        "DarkHadronStableJet": "GenStableCandidate",
         "GenFatJet" : "GenCandidate",
         "GenJet" : "GenCandidate",
     }

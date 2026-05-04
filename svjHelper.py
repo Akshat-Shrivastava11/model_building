@@ -641,8 +641,11 @@ class baseHelper():
         HVEnergyFractions = '\n'.join(["  add EnergyFraction {{{}}} {{0}}".format(id) for id in self.stableIDs])
         stableIDs_with_neg = add_neg(self.stableIDs)
         HVNuFilter = '\n'.join(pdg_lines(stableIDs_with_neg))
+        HVDaughterFilter = HVNuFilter.replace("PdgCode", "PdgDaughter")
         darkHadronIDs_with_neg = add_neg(self.darkHadronIDs)
         HVDarkHadronFilter = '\n'.join(pdg_lines(darkHadronIDs_with_neg))
+        darkHadronFinalIDs_with_neg = add_neg(self.darkHadronFinalIDs)
+        HVDarkHadronFinalFilter = '\n'.join(pdg_lines(darkHadronFinalIDs_with_neg))
 
         with input.open() as infile:
             old_lines = Template(infile.read())
@@ -650,6 +653,8 @@ class baseHelper():
                 HVEnergyFractions = HVEnergyFractions,
                 HVNuFilter = HVNuFilter,
                 HVDarkHadronFilter = HVDarkHadronFilter,
+                HVDaughterFilter = HVDaughterFilter,
+                HVDarkHadronFinalFilter = HVDarkHadronFinalFilter,
             )
         return new_lines
 

@@ -43,6 +43,9 @@ set ExecutionPath {
   DarkHadronFilter
   DarkHadronJetFinder
   DarkHadronVisibleJetFinder
+  DarkHadronFinalFilter
+  StableParticleMerger
+  DarkHadronStableJetFinder
   
   FastJetFinder
   FatJetFinder
@@ -720,6 +723,63 @@ module FastJetFinder DarkHadronVisibleJetFinder {
   set R0SoftDrop 0.8
 }
 
+###########################
+# Stable dark hadron finder
+###########################
+
+module PdgCodeFilter DarkHadronFinalFilter {
+
+  set InputArray Delphes/allParticles
+  set OutputArray filteredParticles
+
+  set PTMin 0.0
+  set Invert 1
+
+$HVDarkHadronFinalFilter
+
+  set StableDark 1
+
+$HVDaughterFilter
+}
+
+######################
+# All stable particles
+######################
+
+module Merger StableParticleMerger {
+  add InputArray NeutrinoFilter/filteredParticles
+  add InputArray DarkHadronFinalFilter/filteredParticles
+  set OutputArray particles
+}
+
+####################
+# Visible+stable jet
+####################
+
+module FastJetFinder DarkHadronStableJetFinder {
+  set InputArray StableParticleMerger/particles
+  set DarkHadronJetArray DarkHadronJetFinder/jets
+  set ParticleInputArray Delphes/allParticles
+
+  set OutputArray jets
+
+  # kDarkHadronVisibleMatch
+  set JetAlgorithm 20
+  # for substructure tools
+  set ParameterR 0.8
+  set JetPTMin 0.0
+
+  # All standard FastJetFinder substructure options work unchanged:
+  set ComputeNsubjettiness 1
+  set Beta 1.0
+  set AxisMode 4
+
+  set ComputeSoftDrop 1
+  set BetaSoftDrop 0.0
+  set SymmetryCutSoftDrop 0.1
+  set R0SoftDrop 0.8
+}
+
 ############
 # Jet finder
 ############
@@ -864,6 +924,7 @@ module TreeWriter TreeWriter {
 # add Branch InputArray BranchName BranchClass
   add Branch Delphes/allParticles GenParticle GenParticle
   add Branch NeutrinoFilter/filteredParticles GenCandidate GenParticle
+  add Branch StableParticleMerger/particles GenStableCandidate GenParticle
 
   add Branch TrackMerger/tracks Track Track
   add Branch Calorimeter/towers Tower Tower
@@ -882,6 +943,7 @@ module TreeWriter TreeWriter {
   add Branch DarkHadronFilter/filteredParticles DarkHadronCandidate GenParticle
   add Branch DarkHadronJetFinder/jets DarkHadronJet Jet
   add Branch DarkHadronVisibleJetFinder/jets DarkHadronVisibleJet Jet
+  add Branch DarkHadronStableJetFinder/jets DarkHadronStableJet Jet
 
   add Branch UniqueObjectFinder/jets Jet Jet
   add Branch UniqueObjectFinder/electrons Electron Electron

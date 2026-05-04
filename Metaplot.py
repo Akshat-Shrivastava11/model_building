@@ -86,13 +86,15 @@ def make_all_plots(outdir, sample_list, x, y):
         stat_plot(data, x, qname, outdir)
 
 if __name__=="__main__":
+    qtys_default = ['stability','DHIVJet12_rinv','DiDHIVJet_rinv','DHIVJet12_rinv_global']
+
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsRawHelpFormatter
     )
     parser.add_argument("--dir", type=str, default="All_metaplots", help="output directory")
     parser.add_argument("--samples", type=str, default=[], nargs='*', help="list of samples to plot")
     parser.add_argument("-x", type=str, default='rinv', help="x variable")
-    parser.add_argument("-y", type=str, default=['stability','DHJet12_rinv'], nargs='*', help="y variable(s)")
+    parser.add_argument("-y", type=str, default=qtys_default, nargs='*', help="y variable(s)")
     args = parser.parse_args()
 
     unknown_samples = [s for s in args.samples if not any([s==sm['name'] for sm in samples])]
