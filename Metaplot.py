@@ -8,6 +8,7 @@ import mplhep as hep
 import pickle
 from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
 from glob import glob
+import itertools
 
 samples = [
     {"name": "FCDC", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-*_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*_Ns-*")},
@@ -35,10 +36,12 @@ markers = ['o', 's', 'D', 'v', '^', '*']
 custom_cycler = mpl.cycler(color=colors) + mpl.cycler(linestyle=lines) + mpl.cycler(marker=markers)
 
 # helper to make a plot
-def stat_plot(data, x, qname, outdir):
+def stat_plot(data, x, qname, outdir, offset):
     fig, ax = plt.subplots(figsize=(8,6))
     # iterator for manual control
     props = iter(custom_cycler)
+    # advance iterator if requested
+    next(itertools.islice(props, offset, offset), None)
     for sample, models in data.items():
         style = next(props)
         xvals = np.array([model['meta'][x] for model in models])
@@ -65,7 +68,7 @@ def stat_plot(data, x, qname, outdir):
     plt.savefig('{}/stat_{}.pdf'.format(outdir,qname),bbox_inches='tight')
     plt.close(fig)
 
-def make_all_plots(outdir, sample_list, x, y):
+def make_all_plots(outdir, sample_list, x, y, offset):
     data = {} # hists + metadata for all models
 
     for sample in samples:
@@ -83,7 +86,7 @@ def make_all_plots(outdir, sample_list, x, y):
 
     os.makedirs(outdir, exist_ok=True)
     for qname in y:
-        stat_plot(data, x, qname, outdir)
+        stat_plot(data, x, qname, outdir, offset)
 
 if __name__=="__main__":
     qtys_default = ['stability','DHIVJet12_rinv','DiDHIVJet_rinv','DHIVJet12_rinv_global']
@@ -95,10 +98,11 @@ if __name__=="__main__":
     parser.add_argument("--samples", type=str, default=[], nargs='*', help="list of samples to plot")
     parser.add_argument("-x", type=str, default='rinv', help="x variable")
     parser.add_argument("-y", type=str, default=qtys_default, nargs='*', help="y variable(s)")
+    parser.add_argument("--offset", type=int, default=0, help="offset for color/style cycler")
     args = parser.parse_args()
 
     unknown_samples = [s for s in args.samples if not any([s==sm['name'] for sm in samples])]
     if unknown_samples:
         raise ValueError("Unknown sample(s) requested:",','.join(unknown_samples))
 
-    make_all_plots(args.dir, args.samples, args.x, args.y)
+    make_all_plots(args.dir, args.samples, args.x, args.y, args.offset)
