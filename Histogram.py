@@ -181,12 +181,12 @@ def calc_rinv(events, helper, meta_dict, debug):
     numer = ak.sum(is_dark_final_daughter, axis=1).to_numpy()
     denom = ak.sum(is_dark_final, axis=1).to_numpy()
     with np.errstate(divide='ignore', invalid='ignore'):
-        stability = np.where(denom>0, numer/denom, 0)
-    dprint('stability',stability.tolist())
-    meta_dict["stability"] = fill_stats(stability)
-    print(f"Average computed rinv value (pions) = {meta_dict['stability']['mean']:.5} ({meta_dict['stability']['stdev']:.5})")
+        stable_invisible_fraction = np.where(denom>0, numer/denom, 0)
+    dprint('stable_invisible_fraction',stable_invisible_fraction.tolist())
+    meta_dict["stable_invisible_fraction"] = fill_stats(stable_invisible_fraction)
+    print(f"Average computed rinv value (pions) = {meta_dict['stable_invisible_fraction']['mean']:.5} ({meta_dict['stable_invisible_fraction']['stdev']:.5})")
 
-    return stability
+    return stable_invisible_fraction
 
 def calc_mt(jet, met):
     # transverse mass calculation

@@ -89,7 +89,7 @@ def make_all_plots(outdir, sample_list, x, y, offset):
         stat_plot(data, x, qname, outdir, offset)
 
 if __name__=="__main__":
-    qtys_default = ['stability','DHIVJet12_rinv','DiDHIVJet_rinv','DHIVJet12_rinv_global']
+    qtys_default = ['stable_invisible_fraction','DHIVJet12_rinv','DiDHIVJet_rinv','DHIVJet12_rinv_global']
 
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsRawHelpFormatter
