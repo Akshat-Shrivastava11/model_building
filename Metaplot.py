@@ -122,7 +122,7 @@ def make_plot(type, data, x, qname, outdir, offset):
                 ax.barh(centers, hist, height=heights, left=lefts, **style)
                 # only apply label once
                 style.pop('label', None)
-            ax.set_xticks(x_locs, labels)
+            ax.set_xticks(x_locs, [f'{label:.3f}' for label in labels], rotation=45)
     if type=='stat':
         ax.axline((0,0), slope=1, color='black', linestyle=':')
     ax.set_xlabel(r'$r_{\text{inv}}^{\text{pred}}$')
