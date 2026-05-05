@@ -35,37 +35,70 @@ lines = ["solid", "dashed", "dotted", "dashdot", (0, (3, 5, 1, 5, 1, 5)), (0, (3
 markers = ['o', 's', 'D', 'v', '^', '*']
 custom_cycler = mpl.cycler(color=colors) + mpl.cycler(linestyle=lines) + mpl.cycler(marker=markers)
 
+def process_data(data, x, qname):
+    processed = []
+    for sample, models in data.items():
+        xvals = np.array([model['meta'][x] for model in models])
+        means, stdevs, stderrs, hists = zip(*[
+            (model['meta'][qname]['mean'], model['meta'][qname]['stdev'], model['meta'][qname]['stderr'], model['hist'][qname]) for model in models
+        ])
+        # order by rinv_pred
+        order = np.argsort(xvals)
+        processed_dict = dict(
+            sample = sample,
+            xvals = xvals[order],
+            means = np.array(means)[order],
+            stdevs = np.array(stdevs)[order],
+            stderrs = np.array(stderrs)[order],
+            hists = [hists[i] for i in order],
+        )
+        processed.append(processed_dict)
+    return processed
+
 # helper to make a plot
-def stat_plot(data, x, qname, outdir, offset):
+def make_plot(type, data, x, qname, outdir, offset):
     fig, ax = plt.subplots(figsize=(8,6))
     # iterator for manual control
     props = iter(custom_cycler)
     # advance iterator if requested
     next(itertools.islice(props, offset, offset), None)
-    for sample, models in data.items():
+    for entry in data:
         style = next(props)
-        xvals = np.array([model['meta'][x] for model in models])
-        means, stdevs, stderrs = zip(*[
-            (model['meta'][qname]['mean'], model['meta'][qname]['stdev'], model['meta'][qname]['stderr']) for model in models
-        ])
-        # order by rinv_pred
-        order = np.argsort(xvals)
-        xvals = xvals[order]
-        means = np.array(means)[order]
-        stdevs = np.array(stdevs)[order]
-        stderrs = np.array(stderrs)[order]
-        # means
-        line, = ax.plot(xvals, means, label=sample, fillstyle='none', **style)
-        color = line.get_color()
-        # stderr as errorbar
-        ax.errorbar(xvals, means, yerr=stderrs, fmt='none', ecolor=style['color'], capsize=3, **style)
-        # stdev as filled
-        ax.fill_between(xvals, means-stdevs, means+stdevs, color=style['color'], alpha=0.15)
-    ax.axline((0,0), slope=1, color='black', linestyle=':')
+        if type=='stat':
+            # means
+            line, = ax.plot(entry['xvals'], entry['means'], label=entry['sample'], fillstyle='none', **style)
+            # stderr as errorbar
+            ax.errorbar(entry['xvals'], entry['means'], yerr=entry['stderrs'], fmt='none', ecolor=style['color'], capsize=3, **style)
+            # stdev as filled
+            ax.fill_between(entry['xvals'], entry['means']-entry['stdevs'], entry['means']+entry['stdevs'], color=style['color'], alpha=0.15)
+        elif type=='violin':
+            # extract values from histograms
+            hists = [h.values() for h in entry['hists']]
+            bin_edges = entry['hists'][0].axes[0].edges
+            labels = entry['xvals']
+
+            # compute quantities for plotting
+            binned_maxs = np.max(hists, axis=1)
+            x_locs = np.arange(0, sum(binned_maxs), np.max(binned_maxs))
+            heights = np.diff(bin_edges)
+            centers = bin_edges[:-1] + heights/2
+
+            # plot all hists from this sample
+            style.update({
+                'fc': 'none',
+                'ec': style['color'],
+            })
+            style.pop('marker')
+            for x_loc, hist in zip(x_locs, hists):
+                lefts = x_loc - 0.5 * hist
+                ax.barh(centers, hist, height=heights, left=lefts, **style)
+            ax.set_xticks(x_locs, labels)
+    if type=='stat':
+        ax.axline((0,0), slope=1, color='black', linestyle=':')
     ax.set_xlabel(r'$r_{\text{inv}}^{\text{pred}}$')
     ax.set_ylabel(qname)
     ax.legend(framealpha=0.5)
-    plt.savefig('{}/stat_{}.pdf'.format(outdir,qname),bbox_inches='tight')
+    plt.savefig(f'{outdir}/{type}_{qname}.pdf',bbox_inches='tight')
     plt.close(fig)
 
 def make_all_plots(outdir, sample_list, x, y, offset):
@@ -86,7 +119,9 @@ def make_all_plots(outdir, sample_list, x, y, offset):
 
     os.makedirs(outdir, exist_ok=True)
     for qname in y:
-        stat_plot(data, x, qname, outdir, offset)
+        processed = process_data(data, x, qname)
+        for plot_type in ['stat','violin']:
+            make_plot(plot_type, processed, x, qname, outdir, offset)
 
 if __name__=="__main__":
     qtys_default = ['stable_invisible_fraction','DHIVJet12_rinv','DiDHIVJet_rinv','DHIVJet12_rinv_global']
