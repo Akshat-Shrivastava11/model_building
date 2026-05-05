@@ -132,7 +132,7 @@ def make_plot(type, data, x, qname, outdir, offset):
     plt.savefig(f'{outdir}/{type}_{qname}.pdf',bbox_inches='tight')
     plt.close(fig)
 
-def make_all_plots(outdir, sample_list, x, y, offset):
+def make_all_plots(outdir, types, sample_list, x, y, offset):
     data = {} # hists + metadata for all models
 
     for sample in samples:
@@ -153,16 +153,18 @@ def make_all_plots(outdir, sample_list, x, y, offset):
     os.makedirs(outdir, exist_ok=True)
     for qname in y:
         processed = process_data(data, x, qname)
-        for plot_type in ['stat','violin']:
+        for plot_type in types:
             make_plot(plot_type, processed, x, qname, outdir, offset)
 
 if __name__=="__main__":
+    allowed_types = ['stat', 'violin']
     qtys_default = ['stable_invisible_fraction','DHIVJet12_rinv','DiDHIVJet_rinv','DHIVJet12_rinv_global']
 
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsRawHelpFormatter
     )
     parser.add_argument("--dir", type=str, default="All_metaplots", help="output directory")
+    parser.add_argument("--types", type=str, default=allowed_types, nargs='*', choices=allowed_types, help="plot types")
     parser.add_argument("--samples", type=str, default=[], nargs='*', help="list of samples to plot")
     parser.add_argument("-x", type=str, default='rinv', help="x variable")
     parser.add_argument("-y", type=str, default=qtys_default, nargs='*', help="y variable(s)")
@@ -173,4 +175,4 @@ if __name__=="__main__":
     if unknown_samples:
         raise ValueError("Unknown sample(s) requested:",','.join(unknown_samples))
 
-    make_all_plots(args.dir, args.samples, args.x, args.y, args.offset)
+    make_all_plots(args.dir, args.types, args.samples, args.x, args.y, args.offset)
