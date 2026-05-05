@@ -79,7 +79,7 @@ def make_plot(type, data, x, qname, outdir, offset):
 
             # compute quantities for plotting
             binned_maxs = np.max(hists, axis=1)
-            x_locs = np.arange(0, sum(binned_maxs), np.max(binned_maxs))
+            x_locs = np.cumsum(binned_maxs) - 0.5 * binned_maxs
             heights = np.diff(bin_edges)
             centers = bin_edges[:-1] + heights/2
 
