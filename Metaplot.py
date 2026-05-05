@@ -68,39 +68,56 @@ def make_plot(type, data, x, qname, outdir, offset):
     # advance iterator if requested
     next(itertools.islice(props, offset, offset), None)
     ylim = None
-    for entry in data:
-        style = next(props)
-        if type=='stat':
+    if type=='stat':
+        for entry in data:
+            style = next(props)
             # means
             line, = ax.plot(entry['xvals'], entry['means'], label=entry['sample'], fillstyle='none', **style)
             # stderr as errorbar
             ax.errorbar(entry['xvals'], entry['means'], yerr=entry['stderrs'], fmt='none', ecolor=style['color'], capsize=3, **style)
             # stdev as filled
             ax.fill_between(entry['xvals'], entry['means']-entry['stdevs'], entry['means']+entry['stdevs'], color=style['color'], alpha=0.15)
-        elif type=='violin':
+    elif type=='violin':
+        # get global max hist height for each xval
+        all_hists = []
+        samples = []
+        labels = []
+        bin_edges = []
+        heights = []
+        centers = []
+        max_per_label = []
+        for entry in data:
             if len(entry['hists'])==0:
                 continue
 
+            # these are assumed to be shared across all samples
+            if len(labels)==0:
+                labels = entry['xvals']
+                bin_edges = entry['hists'][0].axes[0].edges
+                ylim = (bin_edges[0], bin_edges[-1])
+                heights = np.diff(bin_edges)
+                centers = bin_edges[:-1] + heights/2
             # extract values from histograms
-            hists = [h.values() for h in entry['hists']]
-            labels = entry['xvals']
-            bin_edges = entry['hists'][0].axes[0].edges
-            ylim = (bin_edges[0], bin_edges[-1])
+            all_hists.append({x:h.values() for x,h in zip(entry['xvals'],entry['hists'])})
+            samples.append(entry['sample'])
 
-            # compute quantities for plotting
-            binned_maxs = np.max(hists, axis=1)
-            x_locs = np.cumsum(binned_maxs) - 0.5 * binned_maxs
-            heights = np.diff(bin_edges)
-            centers = bin_edges[:-1] + heights/2
+        # get global max hist height for each xval
+        for label in labels:
+            max_per_label.append(max([max(h[label]) for h in all_hists]))
+        widths = np.array(max_per_label)
+        x_locs = np.cumsum(widths) - 0.5 * widths
 
+        for hists,sample in zip(all_hists, samples):
+            style = next(props)
             # plot all hists from this sample
             style.update({
                 'fc': 'none',
                 'ec': style['color'],
-                'label': entry['sample']
+                'label': sample,
             })
             style.pop('marker')
-            for x_loc, hist in zip(x_locs, hists):
+            for x_loc, label in zip(x_locs, labels):
+                hist = hists[label]
                 lefts = x_loc - 0.5 * hist
                 ax.barh(centers, hist, height=heights, left=lefts, **style)
                 # only apply label once
