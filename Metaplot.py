@@ -40,7 +40,7 @@ def process_data(data, x, qname):
     for sample, models in data.items():
         xvals = np.array([model['meta'][x] for model in models])
         means, stdevs, stderrs, hists = zip(*[
-            (model['meta'][qname]['mean'], model['meta'][qname]['stdev'], model['meta'][qname]['stderr'], model['hist'][qname]) for model in models
+            (model['meta'][qname]['mean'], model['meta'][qname]['stdev'], model['meta'][qname]['stderr'], model['hist'].get(qname,None)) for model in models
         ])
         # order by rinv_pred
         order = np.argsort(xvals)
@@ -52,6 +52,11 @@ def process_data(data, x, qname):
             stderrs = np.array(stderrs)[order],
             hists = [hists[i] for i in order],
         )
+        hists_missing = [h is None for h in processed_dict['hists']]
+        if all(hists_missing):
+            processed_dict['hists'] = []
+        elif any(hists_missing):
+            raise RuntimeError(f"Missing histogram {qname} in:\n"+','.join([model[file] for i,model in enumerate(models) if hists_missing[i]]))
         processed.append(processed_dict)
     return processed
 
@@ -62,6 +67,7 @@ def make_plot(type, data, x, qname, outdir, offset):
     props = iter(custom_cycler)
     # advance iterator if requested
     next(itertools.islice(props, offset, offset), None)
+    ylim = None
     for entry in data:
         style = next(props)
         if type=='stat':
@@ -72,10 +78,14 @@ def make_plot(type, data, x, qname, outdir, offset):
             # stdev as filled
             ax.fill_between(entry['xvals'], entry['means']-entry['stdevs'], entry['means']+entry['stdevs'], color=style['color'], alpha=0.15)
         elif type=='violin':
+            if len(entry['hists'])==0:
+                continue
+
             # extract values from histograms
             hists = [h.values() for h in entry['hists']]
-            bin_edges = entry['hists'][0].axes[0].edges
             labels = entry['xvals']
+            bin_edges = entry['hists'][0].axes[0].edges
+            ylim = (bin_edges[0], bin_edges[-1])
 
             # compute quantities for plotting
             binned_maxs = np.max(hists, axis=1)
@@ -87,15 +97,19 @@ def make_plot(type, data, x, qname, outdir, offset):
             style.update({
                 'fc': 'none',
                 'ec': style['color'],
+                'label': entry['sample']
             })
             style.pop('marker')
             for x_loc, hist in zip(x_locs, hists):
                 lefts = x_loc - 0.5 * hist
                 ax.barh(centers, hist, height=heights, left=lefts, **style)
+                # only apply label once
+                style.pop('label', None)
             ax.set_xticks(x_locs, labels)
     if type=='stat':
         ax.axline((0,0), slope=1, color='black', linestyle=':')
     ax.set_xlabel(r'$r_{\text{inv}}^{\text{pred}}$')
+    if ylim: ax.set_ylim(*ylim)
     ax.set_ylabel(qname)
     ax.legend(framealpha=0.5)
     plt.savefig(f'{outdir}/{type}_{qname}.pdf',bbox_inches='tight')
@@ -112,6 +126,8 @@ def make_all_plots(outdir, sample_list, x, y, offset):
 
             with open(file, "rb") as inp:
                 data_model = pickle.load(inp)
+                # track filename
+                data_model['file'] = file
                 # join these for ease of use
                 data_model['meta'] = data_model['model'] | data_model['analysis']
 
