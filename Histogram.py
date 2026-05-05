@@ -197,7 +197,7 @@ def calc_mt(jet, met):
     return np.sqrt(MTsq, where=MTsq>=0)
 
 def proj(events, jet, const):
-    return events[jet, const].dot(events[jet]) / events[jet].mag2
+    return events[jet, const].dot(events[jet]) / events[jet].mass
 
 def jet_const_cumsum(array):
     counts = ak.num(array, axis=-1)
