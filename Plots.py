@@ -8,15 +8,20 @@ import pickle
 from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
 
 samples = [
+    {"name": r"FCDC", "model": "fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-0.333333_Ns-1"},
+    {"name": r"simp", "model": "fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-0.5"},
+    {"name": r"FCDC (3-body)", "model": "fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-3.52941_mq-3.8666_mpi-6_mrho-11.2139_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-0.333333_Ns-1"},
+    {"name": r"simp (3-body)", "model": "fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-3.52941_mq-3.8666_mpi-6_mrho-11.2139_pvector-0.5_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-0.5"},
+
     #{"name": r"CMS", "model": "s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_rinv-0.3/"}
     # {"name": r"CMS ($r_{\text{inv}} = 0.667$)", "model": "s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_rinv-0.666667"},
     # {"name": r"Snowmass ($m_{\text{dark}} = 20\,\text{GeV}$)", "model": "s-channel_mmed-1000_Nc-3_Nf-3_scale-33.3333_mq-33.73_mpi-20_mrho-83.666_pvector-0.5_spectrum-snowmass_rinv-0"},
-    {"name": r"fcdc_rinv0p5", "model": "fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.5"},
+    # {"name": r"fcdc_rinv0p5", "model": "fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.5"},
     # {"name": r"fcdc_rinv0p4", "model": "fcdc/s-channel_mmed-1000_Nc-4_Nf-4_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.4"},
     # {"name": r"fcdc_rinv0p67", "model": "fcdc/s-channel_mmed-1000_Nc-4_Nf-4_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.666667"},
     # {"name": r"fcdc_rinv0p33", "model": "fcdc/s-channel_mmed-1000_Nc-5_Nf-5_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.333333"},
     # {"name": r"fcdc_rinv0p58", "model": "fcdc/s-channel_mmed-1000_Nc-5_Nf-5_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.583333"},
-    {"name": r"fcdc_rinv0p75", "model": "fcdc/s-channel_mmed-1000_Nc-5_Nf-5_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.75"},
+    # {"name": r"fcdc_rinv0p75", "model": "fcdc/s-channel_mmed-1000_Nc-5_Nf-5_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.75"},
     # {"name": r"fcdc_rinv0p28", "model": "fcdc/s-channel_mmed-1000_Nc-6_Nf-6_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.285714"},
     # {"name": r"fcdc_rinv0p51", "model": "fcdc/s-channel_mmed-1000_Nc-6_Nf-6_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.514286"},
     # {"name": r"fcdc_rinv0p69", "model": "fcdc/s-channel_mmed-1000_Nc-6_Nf-6_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.685714"},
@@ -26,12 +31,12 @@ samples = [
     # {"name": r"fcdc_rinv0p625", "model": "fcdc/s-channel_mmed-1000_Nc-7_Nf-7_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.625"},
     # {"name": r"fcdc_rinv0p75", "model": "fcdc/s-channel_mmed-1000_Nc-7_Nf-7_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.75"},
     # {"name": r"fcdc_rinv0p83", "model": "fcdc/s-channel_mmed-1000_Nc-7_Nf-7_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.833333"},
-    {"name": r"fcdc_rinv0p22", "model": "fcdc/s-channel_mmed-1000_Nc-8_Nf-8_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.222222"},
+    # {"name": r"fcdc_rinv0p22", "model": "fcdc/s-channel_mmed-1000_Nc-8_Nf-8_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.222222"},
     # {"name": r"fcdc_rinv0p41", "model": "fcdc/s-channel_mmed-1000_Nc-8_Nf-8_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.412698"},
     # {"name": r"fcdc_rinv0p57", "model": "fcdc/s-channel_mmed-1000_Nc-8_Nf-8_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.571429"},
     # {"name": r"fcdc_rinv0p7", "model": "fcdc/s-channel_mmed-1000_Nc-8_Nf-8_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.698413"},
     # {"name": r"fcdc_rinv0p79", "model": "fcdc/s-channel_mmed-1000_Nc-8_Nf-8_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.793651"},
-    {"name": r"fcdc_rinv0p85", "model": "fcdc/s-channel_mmed-1000_Nc-8_Nf-8_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.857143"},
+    # {"name": r"fcdc_rinv0p85", "model": "fcdc/s-channel_mmed-1000_Nc-8_Nf-8_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_rinv-0.857143"},
 ]
 
 # stylistic options
