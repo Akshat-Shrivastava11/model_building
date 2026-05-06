@@ -133,9 +133,16 @@ def fcdc_rinv_3body(*, Nf, Ns, mrho, mpi, pvector):
     rinv = (numer_pi + numer_rho) / (denom_pi + denom_rho)
     return rinv
 
-def fcdc_rinv_3body_simp(*, rinv, mrho, mpi, pvector):
-    # simplified model does not use separateFlav: pi and rho have equal frequencies
-    rinv_eff = (1-pvector)*rinv + alpha_mean(mrho=mrho, mpi=mpi)*pvector*rinv
+def fcdc_rinv_3body_simp(*, rinv, Nf, mrho, mpi, pvector):
+    Npi = Nf**2-1 # neglect eta prime
+    Nrho = Nf**2
+
+    numer_pi = (1-pvector)*rinv*Npi
+    numer_rho = alpha_mean(mrho=mrho, mpi=mpi)*pvector*rinv*Nrho
+    denom_pi = (1-pvector)*Npi
+    denom_rho = pvector*Nrho
+
+    rinv_eff = (numer_pi + numer_rho) / (denom_pi + denom_rho)
     return rinv_eff
 
 # classes for helper
@@ -424,6 +431,8 @@ class hvSpectrum():
             # define missing antiparticles
             '4900111:antiName = pivDiagbar',
             '4900113:antiName = rhovDiagbar',
+            # disable eta prime production: Nf^2-1 accessible states
+            'HiddenValley:probKeepEta1 = 0',
         ]
 
     # helper for common dark quark/hadron lines in separateFlav setup
@@ -726,7 +735,7 @@ class svjHelper(baseHelper):
         if self.rinv is not None:
             metadict["rinv"] = self.rinv
             if self.mrho < 2*self.mpi:
-                metadict["rinv_3body"] = fcdc_rinv_3body_simp(rinv=self.rinv, mrho=self.mrho, mpi=self.mpi, pvector=self.pvector)
+                metadict["rinv_3body"] = fcdc_rinv_3body_simp(rinv=self.rinv, Nf=self.Nf, mrho=self.mrho, mpi=self.mpi, pvector=self.pvector)
         if self.Ns is not None:
             metadict["rinv"] = fcdc_rinv(Nf=self.Nf, Ns=self.Ns)
             if self.mrho < 2*self.mpi:
