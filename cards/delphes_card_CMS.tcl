@@ -37,6 +37,7 @@ set ExecutionPath {
   MissingET
 
   NeutrinoFilter
+  NeutrinoKeeper
   GenJetFinder
   GenFatJetFinder
   GenMissingET
@@ -608,6 +609,26 @@ $HVNuFilter
 }
 
 #####################
+# Neutrino Keeper
+#####################
+
+module PdgCodeFilter NeutrinoKeeper {
+
+  set InputArray Delphes/stableParticles
+  set OutputArray filteredParticles
+
+  set PTMin 0.0
+  set Invert 1
+
+  add PdgCode {12}
+  add PdgCode {14}
+  add PdgCode {16}
+  add PdgCode {-12}
+  add PdgCode {-14}
+  add PdgCode {-16}
+}
+
+#####################
 # MC truth jet finder
 #####################
 
@@ -748,6 +769,7 @@ $HVDaughterFilter
 
 module Merger StableParticleMerger {
   add InputArray NeutrinoFilter/filteredParticles
+  add InputArray NeutrinoKeeper/filteredParticles
   add InputArray DarkHadronFinalFilter/filteredParticles
   set OutputArray particles
 }
