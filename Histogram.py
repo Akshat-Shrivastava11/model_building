@@ -216,7 +216,7 @@ def jet_const_cumsum(array):
     return ak.unflatten(jets_unflat, ak.num(counts, axis=1))
 
 def fill_stats(array):
-    nparray = ak.to_numpy(ak.flatten(array, axis=None))
+    nparray = ak.to_numpy(ak.drop_none(ak.nan_to_none(ak.flatten(array, axis=None))))
     return {
         "N": len(nparray),
         "mean": np.mean(nparray),
