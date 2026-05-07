@@ -16,6 +16,12 @@ samples = [
     {"name": "FCDC (3-body)", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-*_Nf-*_scale-3.52941_mq-3.8666_mpi-6_mrho-11.2139_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*_Ns-*")},
     {"name": "simp (3-body)", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-3.52941_mq-3.8666_mpi-6_mrho-11.2139_pvector-0.5_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-*")},
 ]
+# account for two complete models with rinv=0.75
+for sample in samples:
+    if "simp" in sample["name"]:
+        idx = next((i for i, val in enumerate(sample["models"]) if 'rinv-0.75' in val), None)
+        if idx is not None:
+            sample["models"].insert(idx+1, sample["models"][idx])
 
 # stylistic options
 mpl.rcParams.update({
@@ -35,7 +41,7 @@ lines = ["solid", "dashed", "dotted", "dashdot", (0, (3, 5, 1, 5, 1, 5)), (0, (3
 markers = ['o', 's', 'D', 'v', '^', '*']
 custom_cycler = mpl.cycler(color=colors) + mpl.cycler(linestyle=lines) + mpl.cycler(marker=markers)
 
-def process_data(data, x, qname):
+def process_data(data, x, qname, forcex):
     processed = []
     for sample, models in data.items():
         xvals = np.array([model['meta'][x] for model in models])
@@ -58,6 +64,12 @@ def process_data(data, x, qname):
         elif any(hists_missing):
             raise RuntimeError(f"Missing histogram {qname} in:\n"+','.join([model[file] for i,model in enumerate(models) if hists_missing[i]]))
         processed.append(processed_dict)
+    if forcex:
+        if forcex not in data:
+            raise ValueError(f"Unknown forcex sample {forcex}")
+        forcexvals = next((pd['xvals'] for pd in processed if pd['sample']==forcex))
+        for processed_dict in processed:
+            processed_dict['xvals'] = forcexvals
     return processed
 
 # helper to make a plot
@@ -132,7 +144,7 @@ def make_plot(type, data, x, qname, outdir, offset):
     plt.savefig(f'{outdir}/{type}_{qname}.pdf',bbox_inches='tight')
     plt.close(fig)
 
-def make_all_plots(outdir, types, sample_list, x, y, offset):
+def make_all_plots(outdir, types, sample_list, x, y, forcex, offset):
     data = {} # hists + metadata for all models
 
     for sample in samples:
@@ -152,7 +164,7 @@ def make_all_plots(outdir, types, sample_list, x, y, offset):
 
     os.makedirs(outdir, exist_ok=True)
     for qname in y:
-        processed = process_data(data, x, qname)
+        processed = process_data(data, x, qname, forcex)
         for plot_type in types:
             make_plot(plot_type, processed, x, qname, outdir, offset)
 
@@ -167,6 +179,7 @@ if __name__=="__main__":
     parser.add_argument("--types", type=str, default=allowed_types, nargs='*', choices=allowed_types, help="plot types")
     parser.add_argument("--samples", type=str, default=[], nargs='*', help="list of samples to plot")
     parser.add_argument("-x", type=str, default='rinv', help="x variable")
+    parser.add_argument("--forcex", type=str, default=None, help="force use of x values from specified sample")
     parser.add_argument("-y", type=str, default=qtys_default, nargs='*', help="y variable(s)")
     parser.add_argument("--offset", type=int, default=0, help="offset for color/style cycler")
     args = parser.parse_args()
@@ -175,4 +188,4 @@ if __name__=="__main__":
     if unknown_samples:
         raise ValueError("Unknown sample(s) requested:",','.join(unknown_samples))
 
-    make_all_plots(args.dir, args.types, args.samples, args.x, args.y, args.offset)
+    make_all_plots(args.dir, args.types, args.samples, args.x, args.y, args.forcex, args.offset)
