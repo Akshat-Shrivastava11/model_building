@@ -165,6 +165,19 @@ def calc_rinv(events, helper, meta_dict, debug):
     dark_mother_sm_sibling = (m1_dark_d_sm) | (m2_dark_d_sm)
     dark_mother_sm_sibling = dark_mother_sm_sibling==1
     printer('dark_mother_sm_sibling',dark_mother_sm_sibling)
+
+    # quick diversion here to measure alpha = E_pi / m_rho for 3-body decays
+    is_dark_3body = is_dark_final & dark_mother_sm_sibling
+    pi_3body = events.GenParticle[is_dark_3body]
+    rho_3body = events.GenParticle[m1[is_dark_3body]]
+    pi_3body_restframe = pi_3body.boostCM_of_beta3(rho_3body.to_beta3())
+    E_pi_3body = pi_3body_restframe.energy
+    m_rho_3body = rho_3body.mass
+    alpha_3body = E_pi_3body/m_rho_3body
+    meta_dict["alpha_3body"] = fill_stats(alpha_3body)
+    print(f"Average alpha_3body = {meta_dict['alpha_3body']['mean']:.3} ({meta_dict['alpha_3body']['stdev']:.3})")
+    events["alpha_3body"] = alpha_3body
+
     is_dark_final = is_dark_final & ~dark_mother_sm_sibling
     printer('is_dark_final',is_dark_final)
 
@@ -186,7 +199,7 @@ def calc_rinv(events, helper, meta_dict, debug):
     meta_dict["stable_invisible_fraction"] = fill_stats(stable_invisible_fraction)
     print(f"Average computed rinv value (pions) = {meta_dict['stable_invisible_fraction']['mean']:.5} ({meta_dict['stable_invisible_fraction']['stdev']:.5})")
 
-    return stable_invisible_fraction
+    events["stable_invisible_fraction"] = stable_invisible_fraction
 
 def calc_mt(jet, met):
     # transverse mass calculation
@@ -296,7 +309,7 @@ def histogram(filename, helper, with_constituents=True, debug=False):
 
     # Add the invisible fraction to the events
     print(f"Predicted rinv = {output['model'].get('rinv_3body',output['model'].get('rinv',-1)):.5}")
-    events["stable_invisible_fraction"] = calc_rinv(events, helper, meta_dict, debug)
+    calc_rinv(events, helper, meta_dict, debug)
 
     # dark hadron jets and corresponding visible and invisible+visible jets
     events["DHJet12"] = ak.pad_none(events.DarkHadronJet[:,0:2], target=2, axis=1)
@@ -459,6 +472,7 @@ def histogram(filename, helper, with_constituents=True, debug=False):
         fill_hist("Jet12_sdmass",50,0,150,r"$m_{\text{SD}}(J_{JETIND})$ [GeV]"),
         fill_hist("Jet12_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T}}(J_{JETIND})$ [GeV]"),
         fill_hist("stable_invisible_fraction",25,0,1,r"$r_{\text{inv}}^{\text{gen}}$"),
+        fill_hist("alpha_3body",50,0,1,r"$\alpha_{\text{3body}}$"),
         fill_hist("mMediator",50,0,mmed*1.5,r"$m_{\text{mediator}}$ [GeV]"),
         fill_hist("DHJet12_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_{JETIND}^{\text{DH}})$ [GeV]"),
         fill_hist("DHVJet12_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_{JETIND}^{\text{vis}})$ [GeV]"),
