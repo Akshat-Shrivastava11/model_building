@@ -73,15 +73,19 @@ def process_data(data, x, qname, forcex):
     return processed
 
 # helper to make a plot
-def make_plot(type, data, x, qname, outdir, offset):
+def make_plot(type, data, x, xlabel, qname, outdir, offset):
     fig, ax = plt.subplots(figsize=(8,6))
     # iterator for manual control
     props = iter(custom_cycler)
     # advance iterator if requested
     next(itertools.islice(props, offset, offset), None)
     ylim = None
+    ylabel = None
     if type=='stat':
         for entry in data:
+            # extract label
+            if ylabel is None and len(entry['hists'])>0:
+                ylabel = entry['hists'][0].axes[0].label
             style = next(props)
             # means
             line, = ax.plot(entry['xvals'], entry['means'], label=entry['sample'], fillstyle='none', **style)
@@ -106,6 +110,7 @@ def make_plot(type, data, x, qname, outdir, offset):
             if len(labels)==0:
                 labels = entry['xvals']
                 bin_edges = entry['hists'][0].axes[0].edges
+                ylabel = entry['hists'][0].axes[0].label
                 ylim = (bin_edges[0], bin_edges[-1])
                 heights = np.diff(bin_edges)
                 centers = bin_edges[:-1] + heights/2
@@ -137,14 +142,16 @@ def make_plot(type, data, x, qname, outdir, offset):
             ax.set_xticks(x_locs, [f'{label:.3f}' for label in labels], rotation=45)
     if type=='stat':
         ax.axline((0,0), slope=1, color='black', linestyle=':')
-    ax.set_xlabel(r'$r_{\text{inv}}^{\text{pred}}$')
+    if xlabel is None: xlabel = x
+    ax.set_xlabel(xlabel)
     if ylim: ax.set_ylim(*ylim)
-    ax.set_ylabel(qname)
+    if ylabel is None: ylabel = qname
+    ax.set_ylabel(ylabel)
     ax.legend(framealpha=0.5)
     plt.savefig(f'{outdir}/{type}_{qname}.pdf',bbox_inches='tight')
     plt.close(fig)
 
-def make_all_plots(outdir, types, sample_list, x, y, forcex, offset):
+def make_all_plots(outdir, types, sample_list, x, y, xlabel, forcex, offset):
     data = {} # hists + metadata for all models
 
     for sample in samples:
@@ -166,11 +173,11 @@ def make_all_plots(outdir, types, sample_list, x, y, forcex, offset):
     for qname in y:
         processed = process_data(data, x, qname, forcex)
         for plot_type in types:
-            make_plot(plot_type, processed, x, qname, outdir, offset)
+            make_plot(plot_type, processed, x, xlabel, qname, outdir, offset)
 
 if __name__=="__main__":
     allowed_types = ['stat', 'violin']
-    qtys_default = ['stable_invisible_fraction','DHIVJet12_rinv','DiDHIVJet_rinv','DHIVJet12_rinv_global']
+    qtys_default = ['stable_invisible_fraction','DHIVJet12_rinv_proj','DiDHIVJet_rinv_proj','DHIVJet12_rinv_proj_global']
 
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsRawHelpFormatter
@@ -179,6 +186,7 @@ if __name__=="__main__":
     parser.add_argument("--types", type=str, default=allowed_types, nargs='*', choices=allowed_types, help="plot types")
     parser.add_argument("--samples", type=str, default=[], nargs='*', help="list of samples to plot")
     parser.add_argument("-x", type=str, default='rinv', help="x variable")
+    parser.add_argument("--xlabel", type=str, default=None, help="x axis label")
     parser.add_argument("--forcex", type=str, default=None, help="force use of x values from specified sample")
     parser.add_argument("-y", type=str, default=qtys_default, nargs='*', help="y variable(s)")
     parser.add_argument("--offset", type=int, default=0, help="offset for color/style cycler")
@@ -188,4 +196,4 @@ if __name__=="__main__":
     if unknown_samples:
         raise ValueError("Unknown sample(s) requested:",','.join(unknown_samples))
 
-    make_all_plots(args.dir, args.types, args.samples, args.x, args.y, args.forcex, args.offset)
+    make_all_plots(args.dir, args.types, args.samples, args.x, args.y, args.xlabel, args.forcex, args.offset)

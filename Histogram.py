@@ -429,8 +429,8 @@ def histogram(filename, helper, with_constituents=True, debug=False):
             fill_hist("Jet12_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_{JETIND})$"),
             fill_hist("Jet12_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_{JETIND})$"),
             fill_hist("Jet12_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_{JETIND})$"),
-            fill_hist("DHIVJet12_rinv",25,0,1,r"$\widetilde{r}_{\text{inv}}(J_{JETIND}^{\text{stable}})$"),
-            fill_hist("DiDHIVJet_rinv",25,0,1,r"$\widetilde{r}_{\text{inv}}(J^{\text{stable}}J^{\text{stable}})$"),
+            fill_hist("DHIVJet12_rinv",25,0,1,r"$r_{\text{inv}}^{\text{kin}}(J_{JETIND}^{\text{stable}})$"),
+            fill_hist("DiDHIVJet_rinv",25,0,1,r"$r_{\text{inv}}^{\text{kin}}(J^{\text{stable}}J^{\text{stable}})$"),
         ]))
         dhj_labels = ["DH", "vis", "stable"]
         dhj_nmax = [24.5, 199.5, 199.5]
@@ -446,15 +446,15 @@ def histogram(filename, helper, with_constituents=True, debug=False):
     hist_dict.update(chain.from_iterable([
         fill_hist("Jet12_sdmass",50,0,150,r"$m_{\text{SD}}(J_{JETIND})$ [GeV]"),
         fill_hist("Jet12_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T}}(J_{JETIND})$ [GeV]"),
-        fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$"),
+        fill_hist("stable_invisible_fraction",25,0,1,r"$r_{\text{inv}}^{\text{gen}}$"),
         fill_hist("mMediator",50,0,mmed*1.5,r"$m_{\text{mediator}}$ [GeV]"),
         fill_hist("DHJet12_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_{JETIND}^{\text{DH}})$ [GeV]"),
         fill_hist("DHVJet12_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_{JETIND}^{\text{vis}})$ [GeV]"),
         fill_hist("DHIVJet12_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_{JETIND}^{\text{stable}})$ [GeV]"),
-        fill_hist("DiDHJet_mass",50,0,mmed*1.5,r"$m_{\text{J}^{\text{DH}}\text{J}^{\text{DH}}}$ [GeV]"),
-        fill_hist("DiDHVJet_mass",50,0,mmed*1.5,r"$m_{\text{J}^{\text{vis}}\text{J}^{\text{vis}}}$ [GeV]"),
-        fill_hist("DiDHVJet_MT",50,0,mmed*1.5,r"$m_{\text{T}}^{\text{J}^{\text{vis}}\text{J}^{\text{vis}}}$ [GeV]"),
-        fill_hist("DiDHIVJet_mass",50,0,mmed*1.5,r"$m_{\text{J}^{\text{stable}}\text{J}^{\text{stable}}}$ [GeV]"),
+        fill_hist("DiDHJet_mass",50,0,mmed*1.5,r"$m_{J^{\text{DH}}J^{\text{DH}}}$ [GeV]"),
+        fill_hist("DiDHVJet_mass",50,0,mmed*1.5,r"$m_{J^{\text{vis}}J^{\text{vis}}}$ [GeV]"),
+        fill_hist("DiDHVJet_MT",50,0,mmed*1.5,r"$m_{\text{T}}^{J^{\text{vis}}J^{\text{vis}}}$ [GeV]"),
+        fill_hist("DiDHIVJet_mass",50,0,mmed*1.5,r"$m_{J^{\text{stable}}J^{\text{stable}}}$ [GeV]"),
     ]))
 
     for t in events.fields:
