@@ -316,27 +316,36 @@ def histogram(filename, helper, with_constituents=True, debug=False):
             is_dark = is_dark | (np.abs(events["DHIVJet12"].Constituents.PID)==dhid)
         is_dark = is_dark==1
         events["DHIVJet12", "DHConstituents"] = events["DHIVJet12", "Constituents"][is_dark]
+
+        def fill_DHIVJet_rinv(numer, denom, suff):
+            events[f"DHIVJet12_rinv_{suff}"] = ak.sum(numer, axis=-1)/ak.sum(denom, axis=-1)
+            for ind,key in zip(jet_inds, jet_ind_keys):
+                meta_dict[f"DHIVJet{key}_rinv_{suff}"] = fill_stats(events[f"DHIVJet12_rinv_{suff}"][:, ind])
+            print(f"Average jet-level rinv ({suff}) =", ", ".join(
+                [f"{meta_dict[f'DHIVJet{key}_rinv_{suff}']['mean']:.5} ({meta_dict[f'DHIVJet{key}_rinv_{suff}']['stdev']:.5})" for key in jet_ind_keys]
+            ))
+            # summing jets
+            events[f"DiDHIVJet_rinv_{suff}"] = ak.sum(ak.flatten(numer, axis=2), axis=-1)/ak.sum(ak.flatten(denom, axis=2), axis=-1)
+            meta_dict[f"DiDHIVJet_rinv_{suff}"] = fill_stats(events[f"DiDHIVJet_rinv_{suff}"])
+            print(f"Average dijet-level rinv ({suff}) =",
+                f"{meta_dict[f'DiDHIVJet_rinv_{suff}']['mean']:.5} ({meta_dict[f'DiDHIVJet_rinv_{suff}']['stdev']:.5})"
+            )
+            # global version, summing all events
+            rinv_global = ak.sum(ak.flatten(numer, axis=1))/ak.sum(ak.flatten(denom, axis=1))
+            meta_dict[f"DHIVJet12_rinv_{suff}_global"] = {"N": 1, "mean": rinv_global, "stdev": 0, "stderr": 0}
+            print(f"Global jet-level rinv ({suff}) =",
+                f"{meta_dict[f'DHIVJet12_rinv_{suff}_global']['mean']:.5}"
+            )
+
         # project constituent momentum onto jet axis
         proj_numer = proj(events, "DHIVJet12", "DHConstituents")
         proj_denom = proj(events, "DHIVJet12", "Constituents")
-        events[f"DHIVJet12_rinv"] = ak.sum(proj_numer, axis=-1)/ak.sum(proj_denom, axis=-1)
-        for ind,key in zip(jet_inds, jet_ind_keys):
-            meta_dict[f"DHIVJet{key}_rinv"] = fill_stats(events[f"DHIVJet12_rinv"][:, ind])
-        print("Average jet-level rinv (p^inv.p^jet) =", ", ".join(
-            [f"{meta_dict[f'DHIVJet{key}_rinv']['mean']:.5} ({meta_dict[f'DHIVJet{key}_rinv']['stdev']:.5})" for key in jet_ind_keys]
-        ))
-        # summing jets
-        events["DiDHIVJet_rinv"] = ak.sum(ak.flatten(proj_numer, axis=2), axis=-1)/ak.sum(ak.flatten(proj_denom, axis=2), axis=-1)
-        meta_dict["DiDHIVJet_rinv"] = fill_stats(events["DiDHIVJet_rinv"])
-        print("Average dijet-level rinv (p^inv.p^jet) =",
-            f"{meta_dict['DiDHIVJet_rinv']['mean']:.5} ({meta_dict['DiDHIVJet_rinv']['stdev']:.5})"
-        )
-        # global version, summing all events
-        rinv_global = ak.sum(ak.flatten(proj_numer, axis=1))/ak.sum(ak.flatten(proj_denom, axis=1))
-        meta_dict[f"DHIVJet12_rinv_global"] = {"N": 1, "mean": rinv_global, "stdev": 0, "stderr": 0}
-        print("Global jet-level rinv (p^inv.p^jet) =",
-            f"{meta_dict['DHIVJet12_rinv_global']['mean']:.5}"
-        )
+        fill_DHIVJet_rinv(proj_numer, proj_denom, 'proj')
+
+        # alternative: use scalar pT sum (related to "jet shape" below)
+        shape_numer = events["DHIVJet12"].DHConstituents.pt
+        shape_denom = events["DHIVJet12"].Constituents.pt
+        fill_DHIVJet_rinv(shape_numer, shape_denom, 'shape')
 
         # dark jet and visible jet radius
         dr_pcts = [90,95,99]
@@ -348,24 +357,25 @@ def histogram(filename, helper, with_constituents=True, debug=False):
             events[f"{pre}Jet12_nconst"] = ak.num(events[f"{pre}Jet12"].Constituents, axis=-1)
 
             # pt-weighted percentile per jet
+            # scalar sum of constituent pT within DeltaR / scalar sum of all constituent pT = "jet shape"
             for pct in dr_pcts:
                 none_mask = ak.is_none(events[f"{pre}Jet12"], axis=1)
                 const_prop = ak.zip({
                     'dr': deltaR(events[f"{pre}Jet12"]),
-                    'proj': proj(events, f"{pre}Jet12", "Constituents"),
+                    'pt': events[f"{pre}Jet12"].Constituents.pt,
                 })[~none_mask]
                 sort_indices = ak.argsort(const_prop.dr, axis=-1)
                 sorted_prop = const_prop[sort_indices]
-                cumul_proj = jet_const_cumsum(sorted_prop.proj)
+                cumul_pt = jet_const_cumsum(sorted_prop.pt)
                 # last element of sum is total from all constituents
-                total_proj = ak.fill_none(ak.pad_none(cumul_proj, 1, axis=-1)[:, :, -1], 0)
-                target_proj = pct/100 * total_proj
-                mask_proj = cumul_proj >= target_proj
-                events[f"{pre}Jet12_radius{pct}"] = ak.pad_none(ak.firsts(sorted_prop[mask_proj].dr, axis=-1), target=2, axis=1)
+                total_pt = ak.fill_none(ak.pad_none(cumul_pt, 1, axis=-1)[:, :, -1], 0)
+                target_pt = pct/100 * total_pt
+                mask_pt = cumul_pt >= target_pt
+                events[f"{pre}Jet12_radius{pct}"] = ak.pad_none(ak.firsts(sorted_prop[mask_pt].dr, axis=-1), target=2, axis=1)
                 for ind,key in zip(jet_inds, jet_ind_keys):
-                    r_pct_proj = events[f"{pre}Jet12_radius{pct}"][:, ind]
-                    meta_dict[f"DHJet{key}_radius{pct}"] = fill_stats(r_pct_proj)
-                print(f"{pct}% radius (p-weighted):", ", ".join(
+                    r_pct_pt = events[f"{pre}Jet12_radius{pct}"][:, ind]
+                    meta_dict[f"DHJet{key}_radius{pct}"] = fill_stats(r_pct_pt)
+                print(f"{pct}% radius (jet shape):", ", ".join(
                     [f"{meta_dict[f'DHJet{key}_radius{pct}']['mean']:.2} ({meta_dict[f'DHJet{key}_radius{pct}']['stdev']:.2})" for key in jet_ind_keys]
                 ))
 
@@ -429,8 +439,10 @@ def histogram(filename, helper, with_constituents=True, debug=False):
             fill_hist("Jet12_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_{JETIND})$"),
             fill_hist("Jet12_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_{JETIND})$"),
             fill_hist("Jet12_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_{JETIND})$"),
-            fill_hist("DHIVJet12_rinv",25,0,1,r"$r_{\text{inv}}^{\text{kin}}(J_{JETIND}^{\text{stable}})$"),
-            fill_hist("DiDHIVJet_rinv",25,0,1,r"$r_{\text{inv}}^{\text{kin}}(J^{\text{stable}}J^{\text{stable}})$"),
+            fill_hist("DHIVJet12_rinv_proj",25,0,1,r"$r_{\text{inv}}^{\text{kin}}(J_{JETIND}^{\text{stable}})$"),
+            fill_hist("DiDHIVJet_rinv_proj",25,0,1,r"$r_{\text{inv}}^{\text{kin}}(J^{\text{stable}}J^{\text{stable}})$"),
+            fill_hist("DHIVJet12_rinv_shape",25,0,1,r"$r_{\text{inv}}^{\text{kin(alt)}}(J_{JETIND}^{\text{stable}})$"),
+            fill_hist("DiDHIVJet_rinv_shape",25,0,1,r"$r_{\text{inv}}^{\text{kin(alt)}}(J^{\text{stable}}J^{\text{stable}})$"),
         ]))
         dhj_labels = ["DH", "vis", "stable"]
         dhj_nmax = [24.5, 199.5, 199.5]
