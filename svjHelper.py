@@ -123,7 +123,7 @@ def alpha_mean(*, mrho, mpi):
     alpha = np.mean(alphas)
     return alpha
 
-def fcdc_rinv_3body(*, Nf, Ns, mrho, mpi, pvector):
+def fcdc_rinv_3body(*, Nf, Ns, mrho, mpi, pvector, alpha=None):
     # off-diagonal pi w/ no FCDC: stable
     # off-diagonal rho w/ no FCDC: decay to pi q qbar (pi stable)
     # all others decay to q qbar (mass insertion or democratic)
@@ -133,20 +133,26 @@ def fcdc_rinv_3body(*, Nf, Ns, mrho, mpi, pvector):
     Npi = Nf**2-1 # neglect eta prime
     Nrho = Nf**2
 
+    if alpha is None:
+        alpha = alpha_mean(mrho=mrho, mpi=mpi)
+
     numer_pi = (1-pvector)*Nstable
-    numer_rho = alpha_mean(mrho=mrho, mpi=mpi)*pvector*Nstable
+    numer_rho = alpha*pvector*Nstable
     denom_pi = (1-pvector)*Npi
     denom_rho = pvector*Nrho
 
     rinv = (numer_pi + numer_rho) / (denom_pi + denom_rho)
     return rinv
 
-def fcdc_rinv_3body_simp(*, rinv, Nf, mrho, mpi, pvector):
+def fcdc_rinv_3body_simp(*, rinv, Nf, mrho, mpi, pvector, alpha=None):
     Npi = Nf**2-1 # neglect eta prime
     Nrho = Nf**2
 
+    if alpha is None:
+        alpha = alpha_mean(mrho=mrho, mpi=mpi)
+
     numer_pi = (1-pvector)*rinv*Npi
-    numer_rho = alpha_mean(mrho=mrho, mpi=mpi)*pvector*rinv*Nrho
+    numer_rho = alpha*pvector*rinv*Nrho
     denom_pi = (1-pvector)*Npi
     denom_rho = pvector*Nrho
 

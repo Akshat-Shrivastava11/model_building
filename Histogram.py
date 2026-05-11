@@ -495,6 +495,14 @@ def histogram(filename, helper, with_constituents=True, debug=False):
     output["hist"] = hist_dict
     output["analysis"] = meta_dict
 
+    # alternative 3body rinv calculation using alpha measured from Pythia
+    if helper.mrho < 2*helper.mpi:
+        from svjHelper import fcdc_rinv_3body, fcdc_rinv_3body_simp
+        if helper.Ns is not None:
+            output["model"]['rinv_3body_gen'] = fcdc_rinv_3body(Nf=helper.Nf, Ns=helper.Ns, mrho=helper.mrho, mpi=helper.mpi, pvector=helper.pvector, alpha=meta_dict['alpha_3body']['mean'])
+        else:
+            output["model"]['rinv_3body_gen'] = fcdc_rinv_3body_simp(rinv=helper.rinv, Nf=helper.Nf, mrho=helper.mrho, mpi=helper.mpi, pvector=helper.pvector, alpha=meta_dict['alpha_3body']['mean'])
+
     # Saving the histograms
     with open("Hists.pkl", "wb") as out:
         pickle.dump(output, out)
