@@ -177,7 +177,16 @@ def make_all_plots(outdir, types, sample_list, x, y, xlabel, forcex, offset):
 
 if __name__=="__main__":
     allowed_types = ['stat', 'violin']
-    qtys_default = ['stable_invisible_fraction','DHIVJet12_rinv_proj','DiDHIVJet_rinv_proj','DHIVJet12_rinv_proj_global']
+    qtys_default = [
+        'stable_invisible_fraction',
+        'alpha_3body',
+        'DHIVJet12_rinv_proj',
+        'DiDHIVJet_rinv_proj',
+        'DHIVJet12_rinv_proj_global',
+        'DHIVJet12_rinv_shape',
+        'DiDHIVJet_rinv_shape',
+        'DHIVJet12_rinv_shape_global',
+    ]
 
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsRawHelpFormatter
