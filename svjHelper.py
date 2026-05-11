@@ -89,15 +89,22 @@ def alpha_numeric(*, mrho, mpi, mq):
     def lam(a, b, c):
         return a*a + b*b + c*c - 2.0*(a*b + a*c + b*c)
 
-    def weight_D(s):
-        L1 = lam(mrho*mrho, mpi*mpi, s)
-        L2 = lam(s, mq*mq, mq*mq)
-        return np.sqrt(L1 * L2) / s
-
-    def weight_I1(s):
+    def phase_space(s):
         L1 = lam(mrho*mrho, mpi*mpi, s)
         L2 = lam(s, mq*mq, mq*mq)
         return np.sqrt(L1 * L2)
+
+    # this can be generalized to any weight function
+    # currently just power law
+    s_power = 0
+    def weight(s):
+        return s**s_power
+
+    def weight_D(s):
+        return weight(s) * phase_space(s) / s
+
+    def weight_I1(s):
+        return weight(s) * phase_space(s)
 
     D_val, _ = integrate.quad(weight_D, s_min, s_max, limit=200)
     I1_val, _ = integrate.quad(weight_I1, s_min, s_max, limit=200)
@@ -112,7 +119,8 @@ def alpha_mean(*, mrho, mpi):
     quarks = quarklist()
     quarks.set(mrho - mpi)
     theQuarks = quarks.get()
-    alpha = np.mean([alpha_numeric(mrho=mrho, mpi=mpi, mq=q.mass) for q in theQuarks])
+    alphas = [alpha_numeric(mrho=mrho, mpi=mpi, mq=q.mass) for q in theQuarks]
+    alpha = np.mean(alphas)
     return alpha
 
 def fcdc_rinv_3body(*, Nf, Ns, mrho, mpi, pvector):
