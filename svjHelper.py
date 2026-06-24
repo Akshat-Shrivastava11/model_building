@@ -73,8 +73,27 @@ def fcdc_configs_NcNf1(*, common, simp=False):
             setattr(config, this_name, this_config)
     return config
 
-# 3-body functions
+# create spread of fcdc configs for varying Nc and Nf separately
+def fcdc_configs_NcNfAll(*, common):
+    Nf_min = 3
+    Nf_max = 8
+    Ns_min = 1
 
+    config = MagiConfig()
+    for Nc_val in range(Nf_min,Nf_max+1):
+        for Nf_val in range(Nf_min,Nf_max+1):
+            Ns_max = Nf_val - 2
+            for Ns_val in range(Ns_min, Ns_max+1):
+                this_name, this_config = fcdc_config(common=common, Nc=Nc_val, Nf=Nf_val, Ns=Ns_val)
+                setattr(config, this_name, this_config)
+    return config
+
+def get_pred_rinv(Nc, Nf, Ns):
+    Nu = Nf - Ns
+    rinv_pred = (Nf * (Nf-1) - Nu * (Nu-1)) / (Nf**2-1)
+    return rinv_pred
+
+# 3-body functions
 def alpha_numeric(*, mrho, mpi, mq):
     # numerical computation of alpha = <E_pi>/<E_rho> from 3-body phase-space integrals
     import numpy as np
