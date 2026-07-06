@@ -9,6 +9,7 @@ import pickle
 from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
 from glob import glob
 import itertools
+from common import set_plot_style
 
 samples = [
     {"name": "FCDC", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-*_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*_Ns-*")},
@@ -23,23 +24,7 @@ for sample in samples:
         if idx is not None:
             sample["models"].insert(idx+1, sample["models"][idx])
 
-# stylistic options
-mpl.rcParams.update({
-    "axes.labelsize" : 18,
-    "legend.fontsize" : 16,
-    "xtick.labelsize" : 14,
-    "ytick.labelsize" : 14,
-    "font.size" : 18,
-    "legend.frameon": True,
-})
-# based on https://github.com/mpetroff/accessible-color-cycles
-# red, blue, mauve, orange, purple, gray,
-colors = ["#e42536", "#5790fc", "#964a8b", "#f89c20", "#7a21dd", "#9c9ca1"]
-
-# last two are dashdotdot and dashdashdot
-lines = ["solid", "dashed", "dotted", "dashdot", (0, (3, 5, 1, 5, 1, 5)), (0, (3, 5, 3, 5, 1, 5))]
-markers = ['o', 's', 'D', 'v', '^', '*']
-custom_cycler = mpl.cycler(color=colors) + mpl.cycler(linestyle=lines) + mpl.cycler(marker=markers)
+custom_cycler = set_plot_style()
 
 def process_data(data, x, qname, forcex):
     processed = []

@@ -74,28 +74,22 @@ def getTau(events):
         if i != 1: events[f"Jet12_tau{i}{i-1}"] = events[f"Jet12_tau{i}"] / events[f"Jet12_tau{i-1}"]
     return events
 
-def getLundMultiplicity(jet, kt_cut):
+def fj_cluster_sequence(jets):
     # Re-cluster the constituents with Cambridge/Aachen.
     # Using a very large R guarantees a single C/A jet containing all constituents
     jet_def = fastjet.JetDefinition(fastjet.cambridge_algorithm, 1000.0)
-    cs = fastjet.ClusterSequence(jet.Constituents, jet_def)
+    cs = fastjet.ClusterSequence(jets.Constituents, jet_def)
+    return cs
 
+def getLundMultiplicity(cluster_seq, kt = 1):
     # Retrieve the primary Lund-plane declusterings for the single jet and apply kt cut
-    lund = cs.exclusive_jets_lund_declusterings(njets=1)
-
+    lund = cluster_seq.exclusive_jets_lund_declusterings(njets=1)
     kt_values = ak.flatten(lund)[:]["kt"]
-    mult = ak.sum(kt_values > kt_cut, axis=-1)
-
+    mult = ak.sum(kt_values > kt, axis=-1)
     return mult
 
-def getECF(jet, npointECF):
-    # Re-cluster the constituents with Cambridge/Aachen.
-    # Using a very large R guarantees a single C/A jet containing all constituents, which is the standard for Lund declustering
-    jet_def = fastjet.JetDefinition(fastjet.cambridge_algorithm, 1000.0)
-    cs = fastjet.ClusterSequence(jet.Constituents, jet_def)
-
-    ecf = cs.exclusive_jets_energy_correlator(njets=1, npoint=npointECF, beta=1)
-
+def getECF(cluster_seq, npointECF):
+    ecf = cluster_seq.exclusive_jets_energy_correlator(njets=1, npoint=npointECF, beta=1)
     return ecf
 
 def calc_rinv(events, helper, meta_dict, debug):
@@ -313,11 +307,15 @@ def histogram(filename, helper, with_constituents=True, debug=False):
         events["Jet12_girth"] = calculate_girth(events["Jet12"])
         events["Jet12_ptD"] = calculate_ptD(events["Jet12"])
         events["Jet12_majoraxis"], events["Jet12_minoraxis"] = calc_axis1_axis2(events["Jet12"])
+
         # maybe do this in a nicer way, looping is annoying
+        jet12_shape = ak.num(events['Jet12'],axis=1)
+        jet12_flat = ak.flatten(events['Jet12'],axis=1)
+        cs = fj_cluster_sequence(jet12_flat)
         for k in kt_cuts: 
-            events[f"Jet12_lundMult{k}"] = getLundMultiplicity(events["Jet12"], k)
+            events[f"Jet12_lundMult{k}"] = ak.unflatten(getLundMultiplicity(cs, kt = k), jet12_shape)
         for n in n_ecf:
-            events[f"Jet12_ECF{n}"] = getECF(events["Jet1"], n)
+            events[f"Jet12_ECF{n}"] = ak.unflatten(getECF(cs, npointECF = n), jet12_shape)
 
     events["Jet12_sdmass"] = events["Jet12"].SoftDroppedJet.mass
     events["Jet12_sdpt"] = events["Jet12"].SoftDroppedJet.pt
@@ -341,7 +339,7 @@ def histogram(filename, helper, with_constituents=True, debug=False):
     events["mMediator"] = meds_final.mass
 
     # Add the invisible fraction to the events
-    print(f"Predicted rinv = {output['model'].get('rinv_3body',output['model'].get('rinv',-1)):.5}")
+    print(f"Predicted rinv = {output['model'].get('rinv_3body',output['model'].get('rinv',output['model'].get('rinvpred', -1))):.5}")
     calc_rinv(events, helper, meta_dict, debug)
 
     # dark hadron jets and corresponding visible and invisible+visible jets

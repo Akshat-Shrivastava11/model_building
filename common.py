@@ -5,6 +5,11 @@ from numpy.typing import NDArray
 import awkward as ak
 from coffea.nanoevents.methods import vector
 from coffea.nanoevents.methods.delphes import behavior, _set_repr_name, Particle
+import matplotlib as mpl
+import fnmatch
+import shutil
+from glob import glob
+from XRootD import client as xrootd_client
 
 DelphesSchema.mixins.update({
     "ParticleFlowCandidate": "Particle",
@@ -184,3 +189,58 @@ def load_events(filename,schema=DelphesSchema,metadict=None,with_constituents=Fa
 
     return events
 
+def set_plot_style():
+    # stylistic options
+    mpl.rcParams.update({
+        "axes.labelsize" : 18,
+        "legend.fontsize" : 16,
+        "xtick.labelsize" : 14,
+        "ytick.labelsize" : 14,
+        "font.size" : 18,
+        "legend.frameon": True,
+    })
+    # based on https://github.com/mpetroff/accessible-color-cycles
+    # red, blue, mauve, orange, purple, gray,
+    colors = ["#e42536", "#5790fc", "#964a8b", "#f89c20", "#7a21dd", "#9c9ca1"]
+
+    # last two are dashdotdot and dashdashdot
+    lines = ["solid", "dashed", "dotted", "dashdot", (0, (3, 5, 1, 5, 1, 5)), (0, (3, 5, 3, 5, 1, 5))]
+    markers = ['o', 's', 'D', 'v', '^', '*']
+    custom_cycler = mpl.cycler(color=colors) + mpl.cycler(linestyle=lines) + mpl.cycler(marker=markers)
+    return custom_cycler
+
+EOS_REDIRECTOR = "root://cmseos.fnal.gov/"
+NOBACKUP_DIR = "/uscms/home/easmith/nobackup"
+
+def resolve_models(pattern):
+    if "/eos" not in pattern:
+        return glob(pattern)
+
+    directory, name_pattern = pattern.rsplit("/", 1)
+
+    fs = xrootd_client.FileSystem(EOS_REDIRECTOR)
+    status, listing = fs.dirlist(directory)
+    if not status.ok:
+        raise RuntimeError(f"xrootd dirlist failed for {directory}: {status.message}")
+
+    matched_names = [entry.name for entry in listing.dirlist if fnmatch.fnmatch(entry.name, name_pattern)]
+    if not matched_names:
+        return []
+
+    copy_process = xrootd_client.CopyProcess()
+    local_dirs = []
+    for name in matched_names:
+        remote_dir = f"{directory}/{name}"
+        local_dir = f"{NOBACKUP_DIR}{remote_dir}"
+        source = f"{EOS_REDIRECTOR}{remote_dir}/Hists.pkl"
+        copy_process.add_job(source, f"{local_dir}/Hists.pkl", mkdir=True, force=True)
+        local_dirs.append(local_dir)
+    copy_process.prepare()
+    _, results = copy_process.run()
+
+    for local_dir, result in zip(local_dirs, results):
+        if not result['status'].ok:
+            print(f"xrootd copy failed for {local_dir}: {result['status'].message}")
+            shutil.rmtree(local_dir, ignore_errors=True)
+
+    return glob(f"{NOBACKUP_DIR}{pattern}")
