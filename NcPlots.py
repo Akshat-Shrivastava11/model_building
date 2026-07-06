@@ -11,13 +11,13 @@ from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
 from common import set_plot_style, resolve_models
 
 samples = [
-    {"name": "FCDC Nc=3", "models": resolve_models("/eos/uscms/store/user/easmith/svj/fcdc/s-channel_mmed-1000_Nc-3_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*")},
-    {"name": "FCDC Nc=4", "models": resolve_models("/eos/uscms/store/user/easmith/svj/fcdc/s-channel_mmed-1000_Nc-4_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*")},
-    {"name": "FCDC Nc=5", "models": resolve_models("/eos/uscms/store/user/easmith/svj/fcdc/s-channel_mmed-1000_Nc-5_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*")},
-    {"name": "FCDC Nc=6", "models": resolve_models("/eos/uscms/store/user/easmith/svj/fcdc/s-channel_mmed-1000_Nc-6_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*")},
-    {"name": "FCDC Nc=7", "models": resolve_models("/eos/uscms/store/user/easmith/svj/fcdc/s-channel_mmed-1000_Nc-7_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*")},
-    {"name": "FCDC Nc=8", "models": resolve_models("/eos/uscms/store/user/easmith/svj/fcdc/s-channel_mmed-1000_Nc-8_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*")},
-    #{"name": "Simple", "models": resolve_models("/eos/uscms/store/user/easmith/svj/fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-*")},
+    {"name": "FCDC Nc=3", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc/s-channel_mmed-1000_Nc-3_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "FCDC Nc=4", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc/s-channel_mmed-1000_Nc-4_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "FCDC Nc=5", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc/s-channel_mmed-1000_Nc-5_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "FCDC Nc=6", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc/s-channel_mmed-1000_Nc-6_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "FCDC Nc=7", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc/s-channel_mmed-1000_Nc-7_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "FCDC Nc=8", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc/s-channel_mmed-1000_Nc-8_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*")},
+    #{"name": "Simple", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-*")},
 ]
 
 data = {} # hists + metadata for all models

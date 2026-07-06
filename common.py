@@ -1,3 +1,4 @@
+import os
 from coffea.nanoevents import DelphesSchema
 import numpy as np
 import numba as nb
@@ -210,13 +211,13 @@ def set_plot_style():
     return custom_cycler
 
 EOS_REDIRECTOR = "root://cmseos.fnal.gov/"
-NOBACKUP_DIR = "/uscms/home/easmith/nobackup"
 
 def resolve_models(pattern):
     if "/eos" not in pattern:
         return glob(pattern)
 
     directory, name_pattern = pattern.rsplit("/", 1)
+    local_base = directory[directory.index("models"):]
 
     fs = xrootd_client.FileSystem(EOS_REDIRECTOR)
     status, listing = fs.dirlist(directory)
@@ -231,9 +232,10 @@ def resolve_models(pattern):
     local_dirs = []
     for name in matched_names:
         remote_dir = f"{directory}/{name}"
-        local_dir = f"{NOBACKUP_DIR}{remote_dir}"
+        local_dir = f"{local_base}/{name}"
         source = f"{EOS_REDIRECTOR}{remote_dir}/Hists.pkl"
-        copy_process.add_job(source, f"{local_dir}/Hists.pkl", mkdir=True, force=True)
+        dest = os.path.abspath(f"{local_dir}/Hists.pkl")
+        copy_process.add_job(source, dest, mkdir=True, force=True)
         local_dirs.append(local_dir)
     copy_process.prepare()
     _, results = copy_process.run()
@@ -243,4 +245,4 @@ def resolve_models(pattern):
             print(f"xrootd copy failed for {local_dir}: {result['status'].message}")
             shutil.rmtree(local_dir, ignore_errors=True)
 
-    return glob(f"{NOBACKUP_DIR}{pattern}")
+    return glob(pattern[pattern.index("models"):])
