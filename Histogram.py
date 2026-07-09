@@ -339,7 +339,7 @@ def histogram(filename, helper, with_constituents=True, debug=False):
     events["mMediator"] = meds_final.mass
 
     # Add the invisible fraction to the events
-    print(f"Predicted rinv = {output['model'].get('rinv_3body',output['model'].get('rinv',output['model'].get('rinvpred', -1))):.5}")
+    print(f"Predicted rinv = {output['model'].get('rinv_3body', output.get('rinvpred_3body', output['model'].get('rinv',output['model'].get('rinvpred', -1)))):.5}")
     calc_rinv(events, helper, meta_dict, debug)
 
     # dark hadron jets and corresponding visible and invisible+visible jets

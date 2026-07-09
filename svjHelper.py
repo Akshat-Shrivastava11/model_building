@@ -766,7 +766,7 @@ class svjHelper(baseHelper):
                 metadict["rinv_3body"] = fcdc_rinv_3body_simp(rinv=self.rinv, Nf=self.Nf, mrho=self.mrho, mpi=self.mpi, pvector=self.pvector)
         if self.Ns is not None:
             if self.mrho < 2*self.mpi:
-                metadict["rinv_3body"] = fcdc_rinv_3body(Nf=self.Nf, Ns=self.Ns, mrho=self.mrho, mpi=self.mpi, pvector=self.pvector)
+                metadict["rinvpred_3body"] = fcdc_rinv_3body(Nf=self.Nf, Ns=self.Ns, mrho=self.mrho, mpi=self.mpi, pvector=self.pvector)
         return metadict
 
     def getPythiaSettings(self):

@@ -8,7 +8,7 @@ import pickle
 import numpy as np
 import itertools
 from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
-from common import set_plot_style, resolve_models
+from common import set_plot_style, resolve_models, accumulate_data
 
 samples = [
     {"name": "FCDC Nc=3", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc/s-channel_mmed-1000_Nc-3_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*")},
@@ -20,20 +20,7 @@ samples = [
     #{"name": "Simple", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-*")},
 ]
 
-data = {} # hists + metadata for all models
-for sample in samples:
-    #if sample_list and sample["name"] not in sample_list: continue
-    data[sample["name"]] = []
-    for model in sample['models']:
-        file = f'{model}/Hists.pkl'
-        with open(file, "rb") as inp:
-            data_model = pickle.load(inp)
-            # track filename
-            data_model['file'] = file
-            data_model['meta'] = data_model['model'] | data_model['analysis']
-
-        data[sample["name"]].append(data_model)
-
+data = accumulate_data(samples)
 custom_cycler = set_plot_style()
 
 def make_plot(outdir, hname, nf_nc_ratio=None):
@@ -350,7 +337,7 @@ def make_nc_rinv_comparison(outdir, hname):
     plt.close(fig)
 
 
-def make_all_plots(outdir, liny):
+def make_all_plots(outdir):
     all_loaded = [md for group in data.values() for md in group]
     if not all_loaded:
         print("No models loaded — check that paths in samples are accessible.")
@@ -369,8 +356,7 @@ def make_all_plots(outdir, liny):
 if __name__=="__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsRawHelpFormatter)
     parser.add_argument("--dir", type=str, default="plots_AllNcNf_10k", help="output directory")
-    parser.add_argument("--liny", type=str, default=[], nargs='*', help="plot histograms with matching names in linear scale")
     args = parser.parse_args()
 
     os.makedirs(args.dir,exist_ok=True)
-    make_all_plots(args.dir, args.liny)
+    make_all_plots(args.dir)

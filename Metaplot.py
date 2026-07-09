@@ -9,7 +9,7 @@ import pickle
 from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
 from glob import glob
 import itertools
-from common import set_plot_style
+from common import set_plot_style, accumulate_data
 
 samples = [
     {"name": "FCDC", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-*_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.5_spectrum-fcdc_gq-0.25_gchi-*_Ns-*")},
@@ -137,22 +137,7 @@ def make_plot(type, data, x, xlabel, qname, outdir, offset):
     plt.close(fig)
 
 def make_all_plots(outdir, types, sample_list, x, y, xlabel, forcex, offset):
-    data = {} # hists + metadata for all models
-
-    for sample in samples:
-        if sample_list and sample["name"] not in sample_list: continue
-        data[sample["name"]] = []
-        for model in sample['models']:
-            file = f'{model}/Hists.pkl'
-
-            with open(file, "rb") as inp:
-                data_model = pickle.load(inp)
-                # track filename
-                data_model['file'] = file
-                # join these for ease of use
-                data_model['meta'] = data_model['model'] | data_model['analysis']
-
-            data[sample["name"]].append(data_model)
+    data = accumulate_data(sample_list)
 
     os.makedirs(outdir, exist_ok=True)
     for qname in y:

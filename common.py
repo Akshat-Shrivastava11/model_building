@@ -246,3 +246,19 @@ def resolve_models(pattern):
             shutil.rmtree(local_dir, ignore_errors=True)
 
     return glob(pattern[pattern.index("models"):])
+
+def accumulate_data(samples):
+    data = {} # hists + metadata for all models
+    for sample in samples:
+        #if sample_list and sample["name"] not in sample_list: continue
+        data[sample["name"]] = []
+        for model in sample['models']:
+            file = f'{model}/Hists.pkl'
+            with open(file, "rb") as inp:
+                data_model = pickle.load(inp)
+                # track filename
+                data_model['file'] = file
+                data_model['meta'] = data_model['model'] | data_model['analysis']
+
+            data[sample["name"]].append(data_model)
+    return data
