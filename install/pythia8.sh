@@ -2,7 +2,7 @@
 
 PYTHIA_VERSION=pythia8310
 
-wget "https://www.pythia.org/download/pythia83/${PYTHIA_VERSION}.tgz"
+wget "https://pythia.org/releases/pythia83/${PYTHIA_VERSION}.tgz"
 tar -xzf ${PYTHIA_VERSION}.tgz
 mv ${PYTHIA_VERSION} pythia8
 rm ${PYTHIA_VERSION}.tgz
