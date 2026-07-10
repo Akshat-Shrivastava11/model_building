@@ -137,7 +137,10 @@ def make_plot(type, data, x, xlabel, qname, outdir, offset):
     plt.close(fig)
 
 def make_all_plots(outdir, types, sample_list, x, y, xlabel, forcex, offset):
-    data = accumulate_data(sample_list)
+    selected_samples = samples
+    if sample_list:
+        selected_samples = [sample for sample in samples if sample["name" in sample_list]
+    data = accumulate_data(selected_samples)
 
     os.makedirs(outdir, exist_ok=True)
     for qname in y:
