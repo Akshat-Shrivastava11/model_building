@@ -24,6 +24,27 @@ def run_cmd(cmd,log,verbose=False,shell=False):
             cmd = shlex.split(cmd)
         subprocess.check_call(cmd,stdout=logfile,stderr=logfile,shell=shell)
 
+# minimal sed-like function
+# patterns = [(in,out),(in,out)]
+# currently doesn't handle regex
+def pysed(line, patterns):
+    for pattern,replace in patterns.items():
+        line = line.replace(pattern,replace)
+    return line
+
+def pythia_handlers():
+    pythia_version = int(os.getenv("PYTHIA8MINOR"))
+    arg_string = '{pythia_exe} {pythia_fname} {hepmc_fname}'
+    if pythia_version >= 13:
+        arg_string = '{pythia_exe} -c {pythia_fname} -o {hepmc_fname}'
+    card_formatter = lambda line: line
+    if pythia_version >= 13:
+        replacements = [
+            ("ParticleDecays:allowPhotonRadiation = on", "HadronLevel:QED = on")
+        ]
+        card_formatter = lambda line: pysed(line, replacements)
+    return {"arg_string": arg_string, "card_formatter": card_formatter}
+
 if __name__=="__main__":
     _parser_common = ArgumentParser(add_help=False)
 
@@ -87,6 +108,7 @@ if __name__=="__main__":
     if args["common"].verbose: print(f'wrote {config_fname}')
 
     pythia_lines = helper.getPythiaSettings()
+    pythia_helpers = pythia_handlers()
     if 'pythia' in args["common"].steps:
         pythia_lines.append('Main:numberOfEvents = {}'.format(args["common"].events))
     pythia_fname = "pythia_card.txt"
@@ -95,7 +117,7 @@ if __name__=="__main__":
         file.write('\n')
         if inputs is not None:
             for line in inputs:
-                file.write(line)
+                file.write(pythia_helpers["card_formatter"](line))
     if args["common"].verbose: print(f'wrote {pythia_fname}')
 
     delphes_lines = helper.getDelphesSettings(args["common"].delphes)
@@ -113,7 +135,7 @@ if __name__=="__main__":
         # step 1: pythia
         log_fname = "log_pythia8.log"
         pythia_exe = os.path.expandvars("$PYTHIA8RUNNER")
-        pythia_cmd = f'{pythia_exe} {pythia_fname} {hepmc_fname}'
+        pythia_cmd = pythia_helpers["arg_string"].format(pythia_exe=pythia_exe, pythia_fname=pythia_fname, hepmc_fname=hepmc_fname)
         if not args["common"].quiet: print(f'Running Pythia ({log_fname})')
         run_cmd(pythia_cmd, log_fname, args["common"].verbose)
 
@@ -132,7 +154,7 @@ if __name__=="__main__":
         # step 2: delphes
         log_fname = "log_delphes.log"
         delphes_exe = "DelphesHepMC2"
-        
+
         if os.path.exists(root_fname):
             if args["common"].verbose: print(f'removing old {root_fname}')
             os.remove(root_fname)
@@ -140,8 +162,8 @@ if __name__=="__main__":
         if not args["common"].quiet: print(f'Running Delphes ({log_fname})')
         run_cmd(delphes_cmd, log_fname, args["common"].verbose, shell=True)
         if args["common"].verbose: print(f'wrote {root_fname}')
-        
+
     if 'hist' in args["common"].steps:
-        
+
         Histogram.histogram(root_fname, helper, not args["common"].no_constituents, args["common"].debug)
         if args["common"].verbose: print(f'wrote histograms of {root_fname}')
