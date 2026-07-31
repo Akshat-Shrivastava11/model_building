@@ -1,0 +1,25 @@
+universe = vanilla
++DesiredOS = "EL9"
+
+Executable = run_npz_shard_constituentmatch_bestdh_noptcut.sh
+
+Should_Transfer_Files = YES
+WhenToTransferOutput = ON_EXIT
+Transfer_Output_Files = ""
+
+Transfer_Input_Files = npz_shard_inputs.tgz
+
+Output = logs_refined_1to250/npz_shard_$(Cluster)_$(Process).out
+Error  = logs_refined_1to250/npz_shard_$(Cluster)_$(Process).err
+Log    = logs_refined_1to250/npz_shard_$(Cluster).log
+
+request_cpus   = 4
+request_memory = 24 GB
+request_disk   = 30 GB
+
+
++JobFlavour = "workday"
+
+Arguments = $(Process)
+
+Queue 150

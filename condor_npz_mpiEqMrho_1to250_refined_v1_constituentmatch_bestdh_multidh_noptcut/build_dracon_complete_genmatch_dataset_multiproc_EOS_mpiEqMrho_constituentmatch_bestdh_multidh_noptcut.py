@@ -33,10 +33,6 @@ This version:
       dark_hadron_full_containment
       dark_hadron_visible_daughter_counts
       dark_hadron_visible_daughter_inside_counts
-  - adds one PF-level truth feature:
-      X[..., 16] = dark_hadron_descendant_id
-      0 means no matched visible dark-hadron descendant; 1 is the best/category
-      dark hadron; 2+ are the other visible dark hadrons in the matched GenFatJet.
 
 Main NPZ keys:
   X, y, kinematics, masses, macro,
@@ -78,8 +74,6 @@ DEFAULT_OUTPUT_PREFIX = "dragon_mpiEqMrho_constituentmatch_bestdh_multidh_noptcu
 
 MAX_CONSTITUENTS_DEFAULT = 100
 MAX_DARK_HADRONS_DEFAULT = 64
-N_CONSTITUENT_FEATURES = 17
-PF_DARK_DESCENDANT_FEATURE_INDEX = 16
 FATJET_R_DEFAULT = 0.8
 MATCHING_R_DEFAULT = 0.4
 PT_CUT_DEFAULT = 0.0
@@ -282,27 +276,13 @@ def get_visible_final_descendants(idx, pids, status, d1s, d2s, n_parts):
 
 def get_refs_from_tref_array_entry(tref_entry):
     """Extract raw TRef ids from one Delphes TRefArray entry."""
-    def normalize_refs(value):
-        if isinstance(value, dict) and "refs" in value:
-            value = value["refs"]
-        if value is None:
-            return []
-        if isinstance(value, (int, np.integer)):
-            return [int(value)]
-        if isinstance(value, (float, np.floating)) and np.isfinite(value):
-            return [int(value)]
-        return [int(ref) for ref in value]
-
     try:
-        return normalize_refs(ak.to_list(tref_entry["refs"]))
+        return [int(ref) for ref in ak.to_list(tref_entry["refs"])]
     except Exception:
         try:
-            return normalize_refs(ak.to_list(tref_entry.refs))
+            return [int(ref) for ref in ak.to_list(tref_entry.refs)]
         except Exception:
-            try:
-                return normalize_refs(ak.to_list(tref_entry))
-            except Exception:
-                return []
+            return []
 
 
 def build_ref_to_index_map(unique_ids_evt):
@@ -326,70 +306,6 @@ def refs_to_indices(raw_refs, ref_to_index, n_parts):
             indices.append(int(idx))
 
     return sorted(set(indices))
-
-
-def first_ref_to_index(tref_entry, ref_to_index, n_parts):
-    indices = refs_to_indices(get_refs_from_tref_array_entry(tref_entry), ref_to_index, n_parts)
-    if not indices:
-        return -1
-    return int(indices[0])
-
-
-def build_pf_gen_indices(pf_particles_evt, ref_to_index, n_parts, n_pf):
-    """Map PF candidates to their first referenced GenParticle index, when available."""
-    out = np.full(n_pf, -1, dtype=np.int32)
-    if pf_particles_evt is None:
-        return out
-
-    n_refs = min(len(pf_particles_evt), n_pf)
-    for pf_idx in range(n_refs):
-        out[pf_idx] = first_ref_to_index(pf_particles_evt[pf_idx], ref_to_index, n_parts)
-
-    return out
-
-
-def sort_dark_hadrons_for_slots(dark_hadrons):
-    return sorted(
-        dark_hadrons,
-        key=lambda item: (
-            item.get("is_best", False),
-            item.get("rank", -1),
-            item.get("frac_inside", -1.0),
-            item.get("n_daughters", -1),
-            item.get("pt", -1.0),
-        ),
-        reverse=True,
-    )
-
-
-def build_pf_dark_descendant_ids(
-    pf_gen_indices,
-    dark_hadrons,
-    max_dark_hadrons,
-    pids_evt,
-    status_evt,
-    d1_evt,
-    d2_evt,
-    n_parts,
-):
-    """Return one integer-like feature per PF candidate linking it to a dark-hadron slot."""
-    out = np.zeros(len(pf_gen_indices), dtype=np.float32)
-    if len(pf_gen_indices) == 0 or not dark_hadrons:
-        return out
-
-    gen_to_dark_slot = {}
-    sorted_dh = sort_dark_hadrons_for_slots(dark_hadrons)
-    for slot, dh in enumerate(sorted_dh[:max_dark_hadrons], start=1):
-        for gen_idx in get_visible_final_descendants(dh["idx"], pids_evt, status_evt, d1_evt, d2_evt, n_parts):
-            gen_to_dark_slot.setdefault(int(gen_idx), float(slot))
-
-    if not gen_to_dark_slot:
-        return out
-
-    for pf_idx, gen_idx in enumerate(pf_gen_indices):
-        out[pf_idx] = gen_to_dark_slot.get(int(gen_idx), 0.0)
-
-    return out
 
 
 def find_dark_ancestors(
@@ -431,7 +347,17 @@ def make_dark_hadron_arrays(dark_hadrons, max_dark_hadrons):
     ndaughters = np.zeros(max_dark_hadrons, dtype=np.int32)
     ninside = np.zeros(max_dark_hadrons, dtype=np.int32)
 
-    sorted_dh = sort_dark_hadrons_for_slots(dark_hadrons)
+    sorted_dh = sorted(
+        dark_hadrons,
+        key=lambda item: (
+            item.get("is_best", False),
+            item.get("rank", -1),
+            item.get("frac_inside", -1.0),
+            item.get("n_daughters", -1),
+            item.get("pt", -1.0),
+        ),
+        reverse=True,
+    )
     for out_idx, dh in enumerate(sorted_dh[:max_dark_hadrons]):
         p4[out_idx] = [dh["px"], dh["py"], dh["pz"], dh["e"]]
         kin[out_idx] = [dh["pt"], dh["eta"], dh["phi"], dh["mass"]]
@@ -896,7 +822,6 @@ def build_jet_matrix(
     pfs_dz,
     pfs_eem,
     pfs_ehad,
-    pf_dark_descendant_ids,
     fatjet_r,
     max_constituents,
 ):
@@ -913,7 +838,6 @@ def build_jet_matrix(
     c_dz = pfs_dz[pf_in]
     c_eem = pfs_eem[pf_in]
     c_ehad = pfs_ehad[pf_in]
-    c_dark_descendant_id = pf_dark_descendant_ids[pf_in]
 
     c_abs_pid = np.abs(c_pid)
     is_photon = (c_abs_pid == 22).astype(np.float32)
@@ -932,7 +856,6 @@ def build_jet_matrix(
     c_dz = c_dz[sort_idx]
     c_eem = c_eem[sort_idx]
     c_ehad = c_ehad[sort_idx]
-    c_dark_descendant_id = c_dark_descendant_id[sort_idx]
     is_photon = is_photon[sort_idx]
     is_chad = is_chad[sort_idx]
     is_nhad = is_nhad[sort_idx]
@@ -942,7 +865,7 @@ def build_jet_matrix(
     c_deta, c_dphi = center_coords(c_eta, c_phi, j_eta, j_phi)
     n_const = min(len(c_pt), max_constituents)
 
-    jet_matrix = np.zeros((max_constituents, N_CONSTITUENT_FEATURES), dtype=np.float32)
+    jet_matrix = np.zeros((max_constituents, 16), dtype=np.float32)
     j_e = np.sqrt((j_pt * np.cosh(j_eta)) ** 2 + j_m**2)
 
     if n_const > 0:
@@ -962,7 +885,6 @@ def build_jet_matrix(
         jet_matrix[:n_const, 13] = is_muon[:n_const]
         jet_matrix[:n_const, 14] = np.log(np.clip(c_pt[:n_const] / j_pt, 1e-8, 1.0))
         jet_matrix[:n_const, 15] = np.log(np.clip(c_e[:n_const] / j_e, 1e-8, 1.0))
-        jet_matrix[:n_const, PF_DARK_DESCENDANT_FEATURE_INDEX] = c_dark_descendant_id[:n_const]
 
     return jet_matrix
 
@@ -1062,16 +984,6 @@ def process_one_root_file(args_tuple):
         pf_dz = get_branch(tree, ["ParticleFlowCandidate/ParticleFlowCandidate.DZ", "ParticleFlowCandidate.DZ"])
         pf_eem = get_branch(tree, ["ParticleFlowCandidate/ParticleFlowCandidate.Eem", "ParticleFlowCandidate.Eem"])
         pf_ehad = get_branch(tree, ["ParticleFlowCandidate/ParticleFlowCandidate.Ehad", "ParticleFlowCandidate.Ehad"])
-        pf_particles = get_branch(
-            tree,
-            [
-                "ParticleFlowCandidate/ParticleFlowCandidate.Particles",
-                "ParticleFlowCandidate.Particles",
-                "ParticleFlowCandidate/ParticleFlowCandidate.Particle",
-                "ParticleFlowCandidate.Particle",
-            ],
-            required=False,
-        )
 
         n_events = len(rf_pt)
         if max_events_per_file is not None:
@@ -1120,12 +1032,6 @@ def process_one_root_file(args_tuple):
             pfs_dz = ak.to_numpy(pf_dz[iev])
             pfs_eem = ak.to_numpy(pf_eem[iev])
             pfs_ehad = ak.to_numpy(pf_ehad[iev])
-            pf_gen_indices = build_pf_gen_indices(
-                pf_particles_evt=pf_particles[iev] if pf_particles is not None else None,
-                ref_to_index=ref_to_index,
-                n_parts=len(pids_evt),
-                n_pf=len(pfs_pt),
-            )
 
             genfatjet_best = build_genfatjet_containment_map(
                 pids_evt=pids_evt,
@@ -1193,16 +1099,6 @@ def process_one_root_file(args_tuple):
                     match_info["dark_hadrons"],
                     max_dark_hadrons=max_dark_hadrons,
                 )
-                pf_dark_descendant_ids = build_pf_dark_descendant_ids(
-                    pf_gen_indices=pf_gen_indices,
-                    dark_hadrons=match_info["dark_hadrons"],
-                    max_dark_hadrons=max_dark_hadrons,
-                    pids_evt=pids_evt,
-                    status_evt=status_evt,
-                    d1_evt=d1_evt,
-                    d2_evt=d2_evt,
-                    n_parts=len(pids_evt),
-                )
 
                 jet_matrix = build_jet_matrix(
                     j_pt=j_pt,
@@ -1219,7 +1115,6 @@ def process_one_root_file(args_tuple):
                     pfs_dz=pfs_dz,
                     pfs_eem=pfs_eem,
                     pfs_ehad=pfs_ehad,
-                    pf_dark_descendant_ids=pf_dark_descendant_ids,
                     fatjet_r=fatjet_r,
                     max_constituents=max_constituents,
                 )
@@ -1326,7 +1221,7 @@ def bucket_to_arrays(bucket, max_constituents, max_dark_hadrons):
     n = len(bucket["Y_labels"])
 
     arrays = {
-        "X": np.asarray(bucket["X_jets"], dtype=np.float32).reshape(n, max_constituents, N_CONSTITUENT_FEATURES),
+        "X": np.asarray(bucket["X_jets"], dtype=np.float32).reshape(n, max_constituents, 16),
         "y": np.asarray(bucket["Y_labels"], dtype=np.float32),
         "kinematics": np.asarray(bucket["Jet_kinematics"], dtype=np.float32).reshape(n, 4),
         "masses": np.asarray(bucket["Mass_params"], dtype=np.float32).reshape(n, 1),
@@ -1446,7 +1341,7 @@ def read_filelist(filelist, eos_host):
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            if line.startswith("/store/") or line.startswith("/eos/"):
+            if line.startswith("/store/"):
                 line = eos_host.rstrip("/") + "/" + line
             files.append(line)
     return sorted(files)
@@ -1627,8 +1522,7 @@ def main():
     print(f"[INFO] Summary written to: {summary_path}")
 
     print("\nNPZ feature notes:")
-    print(f"  X shape: (N, max_constituents, {N_CONSTITUENT_FEATURES})")
-    print("  X[..., 16]: dark_hadron_descendant_id; 0=none, 1=best DH, 2+=other visible DH slots")
+    print("  X shape: (N, max_constituents, 16)")
     print("  kinematics order: [pt, eta, phi, mass]")
     print("  masses: true target m_pi parsed from the file path")
     print("  containment_category: full=2, partial=1, none=0")

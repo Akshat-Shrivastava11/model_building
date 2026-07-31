@@ -1,0 +1,6 @@
+JOB SHARDS submit_npz_shards_constituentmatch_bestdh_noptcut.sub
+JOB MERGE_CHUNKS submit_merge_eos_chunks.sub
+JOB MERGE_CATEGORIES submit_merge_eos_categories_streamzip_bestdh.sub
+
+PARENT SHARDS CHILD MERGE_CHUNKS
+PARENT MERGE_CHUNKS CHILD MERGE_CATEGORIES
