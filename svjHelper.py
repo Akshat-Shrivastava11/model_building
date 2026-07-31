@@ -778,6 +778,7 @@ class svjHelper(baseHelper):
             'HiddenValley:FSR = on',
             'HiddenValley:fragment = on',
             'HiddenValley:alphaOrder = 1',
+            'HiddenValley:setLambda = on',
             'HiddenValley:Lambda = {:g}'.format(self.scale),
             'HiddenValley:nFlav = {:d}'.format(self.Nf),
             'HiddenValley:probVector = {:g}'.format(self.pvector),
