@@ -1,0 +1,23 @@
+universe = vanilla
++DesiredOS = "EL9"
+
+Executable = run_merge_eos_chunk.sh
+
+Should_Transfer_Files = YES
+WhenToTransferOutput = ON_EXIT
+Transfer_Output_Files = ""
+
+Output = logs_merge_eos_refined_1to250/merge_eos_$(Cluster)_$(Process).out
+Error  = logs_merge_eos_refined_1to250/merge_eos_$(Cluster)_$(Process).err
+Log    = logs_merge_eos_refined_1to250/merge_eos_$(Cluster).log
+
+request_cpus   = 1
+request_memory = 12 GB
+request_disk   = 35 GB
+
+
++JobFlavour = "workday"
+
+Arguments = $(Process)
+
+Queue 18
