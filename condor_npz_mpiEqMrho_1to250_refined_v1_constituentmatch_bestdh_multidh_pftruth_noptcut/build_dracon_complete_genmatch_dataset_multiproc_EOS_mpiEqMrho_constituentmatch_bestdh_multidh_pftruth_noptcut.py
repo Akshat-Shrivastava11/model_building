@@ -35,10 +35,10 @@ This version:
       dark_hadron_visible_daughter_inside_counts
   - adds one PF-level dark-hadron decay-tree feature:
       X[..., 16] = dark_hadron_descendant_id
-      0 means no linked visible dark-hadron descendant.
-      k > 0 means this PF candidate descends from the dark hadron stored at
-      dark_hadron_* slot k-1 for this jet. For example, if ndark=2, visible PF
-      descendants of the two dark hadrons are marked 1 and 2 respectively.
+      -1 means no linked visible dark-hadron descendant.
+      k >= 0 means this PF candidate descends from the dark hadron stored at
+      dark_hadron_* slot k for this jet. For example, if ndark=2, visible PF
+      descendants of the two dark hadrons are marked 0 and 1 respectively.
 
 Main NPZ keys:
   X, y, kinematics, masses, macro,
@@ -82,6 +82,7 @@ MAX_CONSTITUENTS_DEFAULT = 100
 MAX_DARK_HADRONS_DEFAULT = 64
 N_CONSTITUENT_FEATURES = 17
 PF_DARK_DESCENDANT_FEATURE_INDEX = 16
+NO_DARK_HADRON_DESCENDANT_ID = -1.0
 FATJET_R_DEFAULT = 0.8
 MATCHING_R_DEFAULT = 0.4
 PT_CUT_DEFAULT = 0.0
@@ -375,13 +376,13 @@ def build_pf_dark_descendant_ids(
     n_parts,
 ):
     """Return one PF feature linking each visible descendant to its dark-hadron slot."""
-    out = np.zeros(len(pf_gen_indices), dtype=np.float32)
+    out = np.full(len(pf_gen_indices), NO_DARK_HADRON_DESCENDANT_ID, dtype=np.float32)
     if len(pf_gen_indices) == 0 or not dark_hadrons:
         return out
 
     gen_to_dark_slot = {}
     sorted_dh = sort_dark_hadrons_for_slots(dark_hadrons)
-    for slot, dh in enumerate(sorted_dh[:max_dark_hadrons], start=1):
+    for slot, dh in enumerate(sorted_dh[:max_dark_hadrons]):
         for gen_idx in get_visible_final_descendants(dh["idx"], pids_evt, status_evt, d1_evt, d2_evt, n_parts):
             gen_to_dark_slot.setdefault(int(gen_idx), float(slot))
 
@@ -389,7 +390,7 @@ def build_pf_dark_descendant_ids(
         return out
 
     for pf_idx, gen_idx in enumerate(pf_gen_indices):
-        out[pf_idx] = gen_to_dark_slot.get(int(gen_idx), 0.0)
+        out[pf_idx] = gen_to_dark_slot.get(int(gen_idx), NO_DARK_HADRON_DESCENDANT_ID)
 
     return out
 
@@ -945,6 +946,7 @@ def build_jet_matrix(
     n_const = min(len(c_pt), max_constituents)
 
     jet_matrix = np.zeros((max_constituents, N_CONSTITUENT_FEATURES), dtype=np.float32)
+    jet_matrix[:, PF_DARK_DESCENDANT_FEATURE_INDEX] = NO_DARK_HADRON_DESCENDANT_ID
     j_e = np.sqrt((j_pt * np.cosh(j_eta)) ** 2 + j_m**2)
 
     if n_const > 0:
@@ -1631,8 +1633,8 @@ def main():
     print("\nNPZ feature notes:")
     print(f"  X shape: (N, max_constituents, {N_CONSTITUENT_FEATURES})")
     print("  X[..., 16]: dark_hadron_descendant_id")
-    print("    0 = no linked visible DH descendant")
-    print("    k > 0 = descendant of dark_hadron_* slot k-1 for this jet")
+    print("    -1 = no linked visible DH descendant")
+    print("    k >= 0 = descendant of dark_hadron_* slot k for this jet")
     print("  kinematics order: [pt, eta, phi, mass]")
     print("  masses: true target m_pi parsed from the file path")
     print("  containment_category: full=2, partial=1, none=0")
