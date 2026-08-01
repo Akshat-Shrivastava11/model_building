@@ -41,6 +41,8 @@ set ExecutionPath {
   GenJetFinder
   GenFatJetFinder
   GenMissingET
+  DarkPartonFilter
+  DarkPartonJetFinder
   DarkHadronFilter
   DarkHadronJetFinder
   DarkHadronVisibleJetFinder
@@ -676,6 +678,55 @@ module Merger GenMissingET {
 }
 
 ####################
+# Dark parton finder
+####################
+
+module PdgCodeFilter DarkPartonFilter {
+
+  set InputArray Delphes/allParticles
+  set OutputArray filteredParticles
+
+  set PTMin 0.0
+  set LastDark 1
+  set Invert 1
+
+  add PdgCode 4900101
+  add PdgCode 4900102
+  add PdgCode 4900103
+  add PdgCode 4900104
+  add PdgCode 4900105
+  add PdgCode 4900106
+  add PdgCode 4900107
+  add PdgCode 4900108
+  add PdgCode 4900021
+}
+
+############################
+# Dark parton jet clustering
+############################
+
+module FastJetFinder DarkPartonJetFinder {
+  set InputArray DarkPartonFilter/filteredParticles
+
+  set OutputArray jets
+
+  # algorithm: 1 CDFJetClu, 2 MidPoint, 3 SIScone, 4 kt, 5 Cambridge/Aachen, 6 antikt
+  set JetAlgorithm 6
+  set ParameterR 0.8
+
+  set ComputeNsubjettiness 1
+  set Beta 1.0
+  set AxisMode 4
+
+  set ComputeSoftDrop 1
+  set BetaSoftDrop 0.0
+  set SymmetryCutSoftDrop 0.1
+  set R0SoftDrop 0.8
+
+  set JetPTMin 15.0
+}
+
+####################
 # Dark hadron finder
 ####################
 
@@ -961,7 +1012,9 @@ module TreeWriter TreeWriter {
   add Branch GenFatJetFinder/jets GenFatJet Jet
   add Branch GenMissingET/momentum GenMissingET MissingET
 
-  # dark hadron jet collections
+  # dark parton & hadron jet collections
+  add Branch DarkPartonFilter/filteredParticles DarkPartonCandidate GenParticle
+  add Branch DarkPartonJetFinder/jets DarkPartonJet Jet
   add Branch DarkHadronFilter/filteredParticles DarkHadronCandidate GenParticle
   add Branch DarkHadronJetFinder/jets DarkHadronJet Jet
   add Branch DarkHadronVisibleJetFinder/jets DarkHadronVisibleJet Jet

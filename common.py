@@ -14,12 +14,14 @@ from XRootD import client as xrootd_client
 
 DelphesSchema.mixins.update({
     "ParticleFlowCandidate": "Particle",
+    "DarkPartonCandidate": "Particle",
     "DarkHadronCandidate": "Particle",
     "GenCandidate": "Particle",
     "GenStableCandidate": "Particle",
     "GenParticle": "Particle",
     "FatJet": "Jet",
     "GenFatJet": "Jet",
+    "DarkPartonJet": "Jet",
     "DarkHadronJet": "Jet",
     "DarkHadronVisibleJet": "Jet",
     "DarkHadronStableJet": "Jet",
@@ -32,6 +34,7 @@ def fix_delphes_mass_units(events):
         "GenParticle",
         "GenCandidate",
         "GenStableCandidate",
+        "DarkPartonCandidate",
         "DarkHadronCandidate",
     ]
     for col in GenParticleCollections:
@@ -42,6 +45,7 @@ class DelphesSchema2(DelphesSchema):
     jet_const_pairs = {
         "FatJet" : "ParticleFlowCandidate",
         "Jet" : "ParticleFlowCandidate",
+        "DarkPartonJet" : "DarkPartonCandidate",
         "DarkHadronJet" : "DarkHadronCandidate",
         "DarkHadronVisibleJet": "GenCandidate",
         "DarkHadronStableJet": "GenStableCandidate",
