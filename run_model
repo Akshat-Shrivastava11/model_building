@@ -153,7 +153,7 @@ if __name__=="__main__":
 
         # step 2: delphes
         log_fname = "log_delphes.log"
-        delphes_exe = "DelphesHepMC2"
+        delphes_exe = "DelphesHepMC3"
 
         if os.path.exists(root_fname):
             if args["common"].verbose: print(f'removing old {root_fname}')

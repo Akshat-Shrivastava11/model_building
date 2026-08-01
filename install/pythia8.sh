@@ -16,10 +16,10 @@ mv ${PYTHIA_VERSION} pythia8
 rm ${PYTHIA_VERSION}.tgz
 cd pythia8
 
-HEPMC_BASE=(/cvmfs/sft.cern.ch/lcg/releases/${LCG_VIEW}/HepMC/*/${LCG_ARCH})
+HEPMC_BASE=(/cvmfs/sft.cern.ch/lcg/releases/${LCG_VIEW}/hepmc3/*/${LCG_ARCH})
 LHAPDF_BASE=(/cvmfs/sft.cern.ch/lcg/releases/${LCG_VIEW}/MCGenerators/lhapdf/*/${LCG_ARCH})
 
-./configure --with-hepmc2=${HEPMC_BASE} --with-lhapdf6=${LHAPDF_BASE} --with-python --with-gzip
+./configure --with-hepmc3=${HEPMC_BASE} --with-hepmc3-lib=${HEPMC_BASE}/lib64 --with-lhapdf6=${LHAPDF_BASE} --with-python --with-gzip
 make -j 8
 make install
 
