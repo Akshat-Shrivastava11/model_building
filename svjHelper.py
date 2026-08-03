@@ -739,7 +739,9 @@ class svjHelper(baseHelper):
 
         # metadata tracking
         self.always_included = ["channel","mmed","Nc","Nf","scale","mq","mpi","mrho","pvector","spectrum","gq","gchi"]
-        self.maybe_included = ["rinv","rinvpred","Ns"]
+        self.maybe_included = ["rinv","Ns"]
+        # included in metadata but *not* in name
+        self.meta_included = ["rinvpred"]
         self.special_formats = {
             "channel": "{1}-{0}",
             "spectrum": "{}-{}",
@@ -757,7 +759,7 @@ class svjHelper(baseHelper):
 
     def metadata(self):
         metadict = {param:getattr(self,param) for param in self.always_included}
-        metadict.update({param:getattr(self,param) for param in self.maybe_included if getattr(self,param,None) is not None})
+        metadict.update({param:getattr(self,param) for param in self.maybe_included+self.meta_included if getattr(self,param,None) is not None})
         metadict["stableIDs"] = self.stableIDs
         metadict["darkHadronIDs"] = self.darkHadronIDs
         metadict["darkHadronFinalIDs"] = self.darkHadronFinalIDs
