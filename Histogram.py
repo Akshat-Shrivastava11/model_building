@@ -346,11 +346,12 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
     print(f"Predicted rinv = {output['model'].get('rinv_3body', output.get('rinvpred_3body', output['model'].get('rinv',output['model'].get('rinvpred', -1)))):.5}")
     calc_rinv(events, helper, meta_dict, debug)
 
-    # dark hadron jets and corresponding visible and invisible+visible jets
+    # dark parton/hadron jets and corresponding visible and invisible+visible jets
+    events["DPJet12"] = ak.pad_none(events.DarkPartonJet[:,0:2], target=2, axis=1)
     events["DHJet12"] = ak.pad_none(events.DarkHadronJet[:,0:2], target=2, axis=1)
     events["DHVJet12"] = ak.pad_none(events.DarkHadronVisibleJet[:,0:2], target=2, axis=1)
     events["DHIVJet12"] = ak.pad_none(events.DarkHadronStableJet[:,0:2], target=2, axis=1)
-    dhj_pre = ["DH", "DHV", "DHIV"]
+    dhj_pre = ["DP", "DH", "DHV", "DHIV"]
     jet_inds = [0, 1, slice(0, 2)]
     jet_ind_names = ["1","2","1,2"]
     jet_ind_keys = ["1","2","12"]
@@ -427,7 +428,11 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
                     [f"{meta_dict[f'DHJet{key}_radius{pct}']['mean']:.2} ({meta_dict[f'DHJet{key}_radius{pct}']['stdev']:.2})" for key in jet_ind_keys]
                 ))
 
-    # dark hadron jet mass and pt
+    # dark parton/hadron jet mass and pt
+    events["DPJet12_pt"] = events["DPJet12"].pt
+    events["DiDPJet"] = events["DPJet12"][:,0] + events["DPJet12"][:,1]
+    events["DiDPJet_mass"] = events["DiDPJet"].mass
+
     events["DHJet12_pt"] = events["DHJet12"].pt
     events["DiDHJet"] = events["DHJet12"][:,0] + events["DHJet12"][:,1]
     events["DiDHJet_mass"] = events["DiDHJet"].mass
@@ -519,6 +524,7 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
         fill_hist("stable_invisible_fraction",25,0,1,r"$r_{\text{inv}}^{\text{gen}}$"),
         fill_hist("alpha_3body",50,0,1,r"$\alpha_{\text{3body}}$"),
         fill_hist("mMediator",50,0,mmed*1.5,r"$m_{\text{mediator}}$ [GeV]"),
+        fill_hist("DPJet12_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_{JETIND}^{\text{DP}})$ [GeV]"),
         fill_hist("DHJet12_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_{JETIND}^{\text{DH}})$ [GeV]"),
         fill_hist("DHVJet12_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_{JETIND}^{\text{vis}})$ [GeV]"),
         fill_hist("DHIVJet12_pt",50,0,mmed*0.75,r"$p_{\text{T}}(J_{JETIND}^{\text{stable}})$ [GeV]"),
@@ -535,9 +541,9 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
             fill_hist("DiDHIVJet_rinv_shape",25,0,1,r"$r_{\text{inv}}^{\text{kin(alt)}}(J^{\text{stable}}J^{\text{stable}})$"),
         ]))
 
-        dhj_labels = ["DH", "vis", "stable"]
-        dhj_nmax = [24.5, 199.5, 199.5]
-        dhj_nbin = [25, 50, 50]
+        dhj_labels = ["DP", "DH", "vis", "stable"]
+        dhj_nmax = [24.5, 24.5, 199.5, 199.5]
+        dhj_nbin = [25, 25, 50, 50]
         for pre,label,nmax,nbin in zip(dhj_pre, dhj_labels,dhj_nmax,dhj_nbin):
             hist_dict.update(chain.from_iterable([
                 fill_hist(f"{pre}Jet12_radius90",50,0,2,r"${\Delta}R_{90}(J_{JETIND}^{\text{"+label+"}})$"),
