@@ -121,6 +121,8 @@ def get_constituents_chunk(events, jetsname, candsname):
     gathered = flat_cands[flat_indices]
 
     # rebuild structure (one level at a time)
+    counts_all = np.asarray(counts_all, dtype=np.int64)
+    jets_per_event = np.asarray(jets_per_event, dtype=np.int64)
     jets_level = ak.unflatten(gathered, counts_all)
     events_level = ak.unflatten(jets_level, jets_per_event)
 
