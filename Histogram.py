@@ -187,15 +187,18 @@ def calc_rinv(events, helper, meta_dict, debug):
 
     # quick diversion here to measure alpha = E_pi / m_rho for 3-body decays
     is_dark_3body = is_dark_final & dark_mother_sm_sibling
-    pi_3body = events.GenParticle[is_dark_3body]
-    rho_3body = events.GenParticle[m1[is_dark_3body]]
-    pi_3body_restframe = pi_3body.boostCM_of_beta3(rho_3body.to_beta3())
-    E_pi_3body = pi_3body_restframe.energy
-    m_rho_3body = rho_3body.mass
-    alpha_3body = E_pi_3body/m_rho_3body
-    meta_dict["alpha_3body"] = fill_stats(alpha_3body)
-    print(f"Average alpha_3body = {meta_dict['alpha_3body']['mean']:.3} ({meta_dict['alpha_3body']['stdev']:.3})")
-    events["alpha_3body"] = alpha_3body
+    if ak.any(is_dark_3body):
+        pi_3body = events.GenParticle[is_dark_3body]
+        rho_3body = events.GenParticle[m1[is_dark_3body]]
+        pi_3body_restframe = pi_3body.boostCM_of_beta3(rho_3body.to_beta3())
+        E_pi_3body = pi_3body_restframe.energy
+        m_rho_3body = rho_3body.mass
+        alpha_3body = E_pi_3body/m_rho_3body
+        meta_dict["alpha_3body"] = fill_stats(alpha_3body)
+        print(f"Average alpha_3body = {meta_dict['alpha_3body']['mean']:.3} ({meta_dict['alpha_3body']['stdev']:.3})")
+        events["alpha_3body"] = alpha_3body
+    else:
+        events["alpha_3body"] = ak.Array([0])
 
     is_dark_final = is_dark_final & ~dark_mother_sm_sibling
     printer('is_dark_final',is_dark_final)
