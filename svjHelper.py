@@ -721,8 +721,8 @@ class svjHelper(baseHelper):
         if self.rinv is not None:
             if self.rinv<0 or self.rinv>1:
                 raise ValueError(f'rinv {self.rinv} not allowed (0 <= rinv <= 1)')
-        if self.Nc is not None and self.Nf is not None and self.Ns is not None:
-            self.rinvpred = round(fcdc_rinv(Nf = self.Nf, Ns = self.Ns),3)
+        if self.Nf is not None and self.Ns is not None:
+            self.rinvpred = fcdc_rinv(Nf = self.Nf, Ns = self.Ns)
 
         # set up production channel
         self.channelHelper = hvChannel(self.channel, self)

@@ -26,10 +26,16 @@ for sample in samples:
 
 custom_cycler = set_plot_style()
 
+def get_xvals(x, meta):
+    # account for difference between complete and simplified models
+    if "rinvpred" in x and x not in meta:
+        return meta[x.replace("rinvpred","rinv")]
+    return meta[x]
+
 def process_data(data, x, qname, forcex):
     processed = []
     for sample, models in data.items():
-        xvals = np.array([model['meta'][x] for model in models])
+        xvals = np.array([get_xvals(x,model['meta']) for model in models])
         means, stdevs, stderrs, hists = zip(*[
             (model['meta'][qname]['mean'], model['meta'][qname]['stdev'], model['meta'][qname]['stderr'], model['hist'].get(qname,None)) for model in models
         ])
@@ -139,7 +145,7 @@ def make_plot(type, data, x, xlabel, qname, outdir, offset):
 def make_all_plots(outdir, types, sample_list, x, y, xlabel, forcex, offset):
     selected_samples = samples
     if sample_list:
-        selected_samples = [sample for sample in samples if sample["name" in sample_list]
+        selected_samples = [sample for sample in samples if sample["name"] in sample_list]
     data = accumulate_data(selected_samples)
 
     os.makedirs(outdir, exist_ok=True)
@@ -167,7 +173,7 @@ if __name__=="__main__":
     parser.add_argument("--dir", type=str, default="All_metaplots", help="output directory")
     parser.add_argument("--types", type=str, default=allowed_types, nargs='*', choices=allowed_types, help="plot types")
     parser.add_argument("--samples", type=str, default=[], nargs='*', help="list of samples to plot")
-    parser.add_argument("-x", type=str, default='rinv', help="x variable")
+    parser.add_argument("-x", type=str, default='rinvpred', help="x variable")
     parser.add_argument("--xlabel", type=str, default=None, help="x axis label")
     parser.add_argument("--forcex", type=str, default=None, help="force use of x values from specified sample")
     parser.add_argument("-y", type=str, default=qtys_default, nargs='*', help="y variable(s)")

@@ -11,6 +11,7 @@ import fnmatch
 import shutil
 from glob import glob
 from XRootD import client as xrootd_client
+import pickle
 
 DelphesSchema.mixins.update({
     "ParticleFlowCandidate": "Particle",
