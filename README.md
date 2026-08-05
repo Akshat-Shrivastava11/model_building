@@ -8,6 +8,12 @@ cd model_building
 ./install.sh
 ```
 
+The default version of Pythia is currently 8.310.
+To install a different version of Pythia, specify the desired minor version, e.g.:
+```bash
+./install.sh -p 17
+```
+
 ## Environment
 
 ```bash
@@ -16,19 +22,24 @@ source init.sh
 
 This repository is built on the [LCG 106](https://lcginfo.cern.ch/release_packages/106/x86_64-el9-gcc13-opt/) environment.
 Important software versions:
+* Python 3.11.9
 * Pythia8 3.10
 * Delphes 3.5.1 (patched)
-* HepMC 2.06.11
+* HepMC 3.2.7
 * ROOT 6.32.02
+* numpy 1.26.4
 * coffea 2025.12.0
-* uproot 5.7.2
-* awkward 2.9.0
+* uproot 5.7.5
+* awkward 2.10.0
+* matplotlib 3.11.0
+* mplhep 1.3.2
 
 ## Predefined model configurations
 
 A few predefined model configuration files are provided in the [configs](./configs) folder:
 1. The CMS model used in [EXO-19-020](https://arxiv.org/abs/2112.11125) (largely based on [arXiv:1503.00009](https://www.arxiv.org/abs/1503.00009) and [arXiv:1707.05326](https://arxiv.org/abs/1707.05326)).
 2. One of the Snowmass benchmark models from [arXiv:2203.09503](https://arxiv.org/abs/2203.09503).
+3. The new flavor-changing dark current (FCDC) model, in both complete and simplified versions.
 
 ## Running
 
