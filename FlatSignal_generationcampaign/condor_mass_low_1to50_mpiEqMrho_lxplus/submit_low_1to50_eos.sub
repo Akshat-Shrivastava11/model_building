@@ -1,0 +1,22 @@
+universe = vanilla
+
+Executable = /bin/bash
+
+Should_Transfer_Files = YES
+WhenToTransferOutput = ON_EXIT
+
+Transfer_Input_Files = root://eosproject.cern.ch//eos/project/d/dragon/ashrivas/DarkHadronMassReco/condor_payloads/FlatSignal_generationcampaign/condor_mass_low_1to50_mpiEqMrho_lxplus/run_mass_point_lxplus.sh, root://eosproject.cern.ch//eos/project/d/dragon/ashrivas/DarkHadronMassReco/condor_payloads/FlatSignal_generationcampaign/condor_mass_low_1to50_mpiEqMrho_lxplus/model_building_production.tgz, root://eosproject.cern.ch//eos/project/d/dragon/ashrivas/DarkHadronMassReco/condor_payloads/FlatSignal_generationcampaign/condor_mass_low_1to50_mpiEqMrho_lxplus/mass_points_low_1to50.txt
+
+Output = /dev/null
+Error  = /dev/null
+Log    = /dev/null
+
+request_cpus   = 1
+request_memory = 4 GB
+request_disk   = 20 GB
+
++JobFlavour = "workday"
+
+Arguments = run_mass_point_lxplus.sh $(Process) mass_points_low_1to50.txt 300 /eos/project/d/dragon/ashrivas/DarkHadronMassReco/DataForDragon_lowMass_1to50 root://eosproject.cern.ch
+
+Queue 19604

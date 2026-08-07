@@ -1,0 +1,22 @@
+universe = vanilla
+
+Executable = FlatSignal_generationcampaign/condor_mass_refined_mpiEqMrho_lxplus/run_mass_point_lxplus.sh
+
+Should_Transfer_Files = YES
+WhenToTransferOutput = ON_EXIT
+
+Transfer_Input_Files = FlatSignal_generationcampaign/condor_mass_refined_mpiEqMrho_lxplus/model_building_production.tgz, FlatSignal_generationcampaign/condor_mass_refined_mpiEqMrho_lxplus/mass_points_refined_1to250.txt
+
+Output = FlatSignal_generationcampaign/condor_mass_refined_mpiEqMrho_lxplus/logs/refined_1to250_$(Cluster)_$(Process).out
+Error  = FlatSignal_generationcampaign/condor_mass_refined_mpiEqMrho_lxplus/logs/refined_1to250_$(Cluster)_$(Process).err
+Log    = FlatSignal_generationcampaign/condor_mass_refined_mpiEqMrho_lxplus/logs/refined_1to250_$(Cluster).log
+
+request_cpus   = 1
+request_memory = 4 GB
+request_disk   = 20 GB
+
++JobFlavour = "workday"
+
+Arguments = 0 mass_points_refined_1to250.txt 300 /eos/project/d/dragon/ashrivas/DarkHadronMassReco/DataForDragon root://eosproject.cern.ch
+
+Queue 1

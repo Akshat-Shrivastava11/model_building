@@ -22,21 +22,27 @@ def run_cmd(cmd,log,verbose=False,shell=False):
     with open(log,'w') as logfile:
         if not shell:
             cmd = shlex.split(cmd)
-        subprocess.check_call(cmd,stdout=logfile,stderr=logfile,shell=shell)
+        try:
+            subprocess.check_call(cmd,stdout=logfile,stderr=logfile,shell=shell)
+        except subprocess.CalledProcessError:
+            print(f"Command failed; contents of {log}:")
+            with open(log) as failed_log:
+                print(failed_log.read())
+            raise
 
 # minimal sed-like function
 # patterns = [(in,out),(in,out)]
 # currently doesn't handle regex
 def pysed(line, patterns):
-    for pattern,replace in patterns.items():
+    if hasattr(patterns, "items"):
+        patterns = patterns.items()
+    for pattern,replace in patterns:
         line = line.replace(pattern,replace)
     return line
 
 def pythia_handlers():
     pythia_version = int(os.getenv("PYTHIA8MINOR"))
     arg_string = '{pythia_exe} {pythia_fname} {hepmc_fname}'
-    if pythia_version >= 13:
-        arg_string = '{pythia_exe} -c {pythia_fname} -o {hepmc_fname}'
     card_formatter = lambda line: line
     if pythia_version >= 13:
         replacements = [

@@ -8,7 +8,10 @@ chmod +x lcg-venv
 ./lcg-venv mbenv
 
 cat << 'EOF' > mb_init.sh
-source ${MODEL_BUILDING}/install/python_packages/mbenv/bin/activate
+export MODEL_BUILDING_PYTHON=${MODEL_BUILDING}/install/python_packages/mbenv
+export VIRTUAL_ENV=${MODEL_BUILDING_PYTHON}
+export PATH=${MODEL_BUILDING_PYTHON}/bin:${PATH}
+export PYTHONPATH=${MODEL_BUILDING_PYTHON}/lib/python3.11/site-packages:${PYTHONPATH:-}
 EOF
 
 source mb_init.sh

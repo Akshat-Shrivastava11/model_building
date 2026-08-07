@@ -5,3 +5,10 @@
 /models
 /__pycache__
 */__pycache__
+**/__pycache__/
+*.tgz
+*.log
+*.out
+*.err
+FlatSignal_generationcampaign/**/logs/
+FlatSignal_generationcampaign/**/model_building_production.tgz
