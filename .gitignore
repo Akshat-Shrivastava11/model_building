@@ -12,3 +12,5 @@
 *.err
 FlatSignal_generationcampaign/**/logs/
 FlatSignal_generationcampaign/**/model_building_production.tgz
+Sdmass_parameter/data_cache/
+Sdmass_parameter/plots/
