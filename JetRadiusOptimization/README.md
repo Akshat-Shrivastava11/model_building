@@ -103,6 +103,7 @@ most sensitive to containment are the masses built from the two leading jets
 | `mjj` (visible) | invariant mass of the two leading visible jets at R |
 | `mt` | transverse mass of the dijet system with the generator-level missing pT, mT² = mjj² + 2 (√(mjj² + pT,jj²) MET − **pT,jj** · **MET**), as in the CMS semi-visible jet search |
 | `mjj` (truth) | invariant mass of the two leading dark-hadron jets at R_DH (all dark hadrons, including stable ones); approaches m_med when R_DH holds the whole dark shower |
+| `msd1`, `msd2` | soft-drop mass of the leading and subleading visible jet at R (constituents reclustered with Cambridge/Aachen; β = 0, z_cut = 0.1, R0 = R, as in CMS), to compare with the dark-hadron mass |
 
 ## Relation to the literature
 
@@ -160,7 +161,7 @@ python3 JetRadiusOptimization/plot.py -m "models/*" -x rinv --displays
   one row per (event, truth jet, R_DH, R) with the scores, `f_full`,
   `f_partial`, `f_nodh`, `n_dh`, `n_full`, the truth and matched-jet pT, and
   the jet-shape variables above; and one row per (event, R or R_DH) with the
-  number of jets, `mjj` and `mt`.
+  number of jets, `mjj`, `mt`, `msd1` and `msd2`.
 - `JetRadius_plots/` (from `plot.py`, `--dir`):
 
 | File | Shows |
@@ -174,7 +175,7 @@ python3 JetRadiusOptimization/plot.py -m "models/*" -x rinv --displays
 | `best_radius_<score>.pdf` | the best-R points of all models overlaid, with the truth ΔR₉₅ (all three for one model) |
 | `best_ratio_<score>.pdf`, `best_ratio_<model>.pdf` | best R / R_DH vs R_DH: per score for all models, and per model for all scores with truth ΔR₉₅,₉₉ / R_DH |
 | `truth_jets_vs_rdh.pdf`, `mjj_truth_vs_rdh.pdf` | inputs for choosing R_DH: truth jets per event, the pT fraction in the two leading ones, and their dijet mass |
-| `mjj_vs_r.pdf`, `mt_vs_r.pdf`, `<mjj\|mt>_dist_<model>.pdf` | visible dijet and transverse mass vs R (median, 16–84% range and relative width; divided by m_med when known) and their distributions at several R |
+| `mjj_vs_r.pdf`, `mt_vs_r.pdf`, `msd_vs_r.pdf`, `<mjj\|mt\|msd>_dist_<model>.pdf` | visible dijet, transverse and soft-drop mass vs R (median, 16–84% range and relative width; m_jj and m_T divided by m_med, m_SD by the dark-hadron mass m_π = m_ρ, when known) and their distributions at several R |
 | `<quantity>_dist_<model>.pdf` | distributions of the scores, Ψ_T and the jet shapes at several R (`--dist-radii`) |
 | `truth_radius_dist_<model>.pdf`, `truth_r<pct>_by_rdh_<model>.pdf` | distributions of the truth ΔR₉₀/₉₅/₉₉, and of each at several R_DH (`--dist-truth-radii`) |
 | `truth_radius_vs_rdh.pdf` | mean truth ΔR₉₀/₉₅/₉₉ vs R_DH |

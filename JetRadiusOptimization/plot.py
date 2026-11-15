@@ -29,8 +29,9 @@ truth jets.
   * if the scans have the event table (scan.py event_scan): mjj_truth_vs_rdh.pdf,
     the two leading truth jets' mass vs R_DH; mjj_vs_r.pdf and mt_vs_r.pdf,
     the visible dijet mass and transverse mass vs R (median and 16-84% range,
-    divided by mmed when the models have one); <mjj|mt>_dist_<model>.pdf at
-    several R
+    divided by mmed when the models have one); msd_vs_r.pdf, the soft-drop
+    mass of the two leading jets (divided by mpi); <mjj|mt|msd>_dist_<model>.pdf
+    at several R
   * with --displays, for models with a local events.root (first
     --display-max-events events), at --truth-radius:
     event_<i>_<model>.pdf, one event per truth-jet pT bin: the visible
@@ -605,35 +606,46 @@ if __name__ == "__main__":
         legend(ax)
         save(fig, f"best_ratio_{args.x}_{scan['model'][args.x]}")
 
-    # dijet and transverse mass (event table from scan.py), divided by mmed when every model has one
+    # dijet, transverse and soft-drop mass (event table from scan.py): mjj and mt divided by mmed,
+    # the soft-drop mass of the two leading jets by the dark-hadron mass (mpi = mrho), when every model has it
     with_events = [s for s in scans if "events" in s]
-    norm = bool(with_events) and all(s["model"].get("mmed") for s in with_events)
-    unit = " / $m_{\\text{med}}$" if norm else " [GeV]"
-    mass_label = {"mjj": "$m_{\\text{jj}}$", "mt": "$m_{\\text{T}}$"}
+    masses = {   # quantity: (label, what it is of, reference mass in the model, its label)
+        "mjj": ("$m_{\\text{jj}}$", "two leading visible jets", "mmed", "$m_{\\text{med}}$"),
+        "mt": ("$m_{\\text{T}}$", "two leading visible jets", "mmed", "$m_{\\text{med}}$"),
+        "msd": ("$m_{\\text{SD}}$", "each of the two leading visible jets", "mpi", "$m_{\\text{dark}}$"),
+    }
+
+    def unit(q):
+        ref, ref_label = masses[q][2:]
+        return f" / {ref_label}" if all(s["model"].get(ref) for s in with_events) else " [GeV]"
 
     def event_values(scan, q, truth, r):
         e = scan["events"]
-        v = e[q][(e["truth"] == truth) & (e["radius"] == r) & np.isfinite(e[q])]
-        return v / scan["model"]["mmed"] if norm else v
+        sel = (e["truth"] == truth) & (e["radius"] == r)
+        v = np.concatenate([e[c][sel] for c in (("msd1", "msd2") if q == "msd" else (q,)) if c in e])
+        v = v[np.isfinite(v)]
+        return v / scan["model"][masses[q][2]] if unit(q).startswith(" /") else v
 
     if with_events:
         ev_styles = styles(len(with_events))
         fig, ax = plt.subplots()
         for scan, style in zip(with_events, ev_styles):
             band(ax, scan["truth_radii"], [event_values(scan, "mjj", 1, t) for t in scan["truth_radii"]], style, label(scan))
-        ax.set(xlabel="truth radius $R_{\\text{DH}}$", ylabel=f"two leading truth jets: {mass_label['mjj']}{unit}")
+        ax.set(xlabel="truth radius $R_{\\text{DH}}$", ylabel=f"two leading truth jets: {masses['mjj'][0]}{unit('mjj')}")
         ax.set_title("dark-hadron jets (incl. stable dark hadrons): median, 16-84%", fontsize=11)
         legend(ax)
         save(fig, "mjj_truth_vs_rdh")
-        for q in ("mjj", "mt"):
+        for q, (q_label, of, _, _) in masses.items():
+            if not any(len(event_values(s, q, 0, s["radii"][0])) for s in with_events):
+                continue   # e.g. no soft-drop columns in older scans
             fig, axes = plt.subplots(1, 2, figsize=(13, 5.5))
             for scan, style in zip(with_events, ev_styles):
                 samples = [event_values(scan, q, 0, r) for r in scan["radii"]]
                 band(axes[0], scan["radii"], samples, style, label(scan), alpha=0.1)
                 qs = np.array([np.percentile(s, (16, 50, 84)) if len(s) else (np.nan,) * 3 for s in samples])
                 axes[1].plot(scan["radii"], (qs[:, 2] - qs[:, 0]) / 2 / qs[:, 1], label=label(scan), **style)
-            axes[0].set(xlabel="visible jet radius R", ylabel=f"{mass_label[q]}{unit} (median, 16-84%)")
-            axes[1].set(xlabel="visible jet radius R", ylabel=f"{mass_label[q]} relative width (84-16%) / 2 / median")
+            axes[0].set(xlabel="visible jet radius R", ylabel=f"{q_label}{unit(q)} (median, 16-84%)")
+            axes[1].set(xlabel="visible jet radius R", ylabel=f"{q_label} relative width (84-16%) / 2 / median")
             legend(axes[1])
             fig.tight_layout()
             save(fig, f"{q}_vs_r")
@@ -643,9 +655,9 @@ if __name__ == "__main__":
                 bins = np.linspace(0, np.percentile(values, 99.5), 51) if len(values) else 50
                 for r in args.dist_radii:
                     ax.hist(event_values(scan, q, 0, r), bins=bins, histtype="step", density=True, label=f"R = {r}")
-                if norm:
+                if unit(q).startswith(" /"):
                     ax.axvline(1, color="0.5", lw=0.8)
-                ax.set(yscale="log", xlabel=f"two leading visible jets: {mass_label[q]}{unit}", ylabel="events (normalized)")
+                ax.set(yscale="log", xlabel=f"{of}: {q_label}{unit(q)}", ylabel="jets (normalized)" if q == "msd" else "events (normalized)")
                 ax.set_title(label(scan), fontsize=14)
                 legend(ax)
                 save(fig, f"{q}_dist_{args.x}_{scan['model'][args.x]}")

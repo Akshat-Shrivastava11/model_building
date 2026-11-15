@@ -50,6 +50,8 @@ generator-level missing pT (as in the CMS semi-visible jet search),
     mt^2 = mjj^2 + 2 (sqrt(mjj^2 + pT_jj^2) MET - pT_jj . MET)
 For truth jets (all dark hadrons, including the stable ones) mjj is the
 reference: it approaches the mediator mass when R_DH holds the whole shower.
+For the two leading visible jets it also stores the soft-drop mass (CMS
+settings: beta = 0, z_cut = 0.1, R0 = R), to compare with the dark-hadron mass.
 
 check_clustering compares our clustering with the stored GenFatJet and
 DarkHadronJet (scan.py --check-clustering).
@@ -249,20 +251,26 @@ def radius_scan(events, radii, truth_radii=(0.8,), pt_min=PT_MIN, min_containmen
     return {c: np.array([row[c] for row in rows], dtype=float) for c in COLUMNS}
 
 
-EVENT_COLUMNS = ("event", "truth", "radius", "n_jets", "mjj", "mt")
+EVENT_COLUMNS = ("event", "truth", "radius", "n_jets", "mjj", "mt", "msd1", "msd2")
+# soft drop as in CMS (modified mass-drop tagger): beta = 0, z_cut = 0.1, R0 = the jet radius
+SOFTDROP = {"beta": 0, "symmetry_cut": 0.1}
 
 
-def dijet(jets):
-    """Sum of the two leading jets per event (None with fewer than two) and the number of jets."""
-    lead = jets[ak.argsort(jets.pt, ascending=False)][:, :2]
-    lead = ak.mask(lead, ak.num(lead) == 2)
-    return lead[:, 0] + lead[:, 1], ak.num(jets)
+def softdrop_mass(constituents, radius):
+    """Soft-drop mass of each jet ([event][jet][particle] -> [event][jet]): its constituents
+    reclustered into one Cambridge/Aachen jet and groomed."""
+    flat = ak.flatten(constituents, axis=1)   # one "event" per jet
+    p4 = ak.zip({"px": flat.px, "py": flat.py, "pz": flat.pz, "E": flat.energy})
+    sequence = fastjet.ClusterSequence(p4, fastjet.JetDefinition(fastjet.cambridge_algorithm, radius))
+    groomed = sequence.exclusive_jets_softdrop_grooming(njets=1, R0=radius, **SOFTDROP)
+    return ak.unflatten(groomed.msoftdrop, ak.num(constituents, axis=1))
 
 
 def event_scan(events, radii, truth_radii=(), pt_min=PT_MIN):
-    """Dijet mjj and mt per event, for visible jets at each radius and truth jets at each truth radius.
-
-    truth = 1 for truth (dark-hadron) jets, which have no mt. Events with fewer than two jets give NaN.
+    """Per event, for the two leading jets (by pT): the dijet mass mjj and, for visible jets,
+    the transverse mass mt and each jet's soft-drop mass msd1, msd2. Visible jets at each
+    radius, truth (dark-hadron) jets at each truth radius (truth = 1; no mt or soft drop).
+    Missing jets give NaN.
     """
     met = events.GenMissingET[:, 0]
     met_x, met_y = met.MET * np.cos(met.Phi), met.MET * np.sin(met.Phi)
@@ -270,16 +278,22 @@ def event_scan(events, radii, truth_radii=(), pt_min=PT_MIN):
     for is_truth, rs in ((0, radii), (1, truth_radii)):
         particles = events.DarkHadronCandidate if is_truth else events.GenCandidate
         for r in rs:
-            jets = ak.sum(gather(particles, cluster(particles, r, pt_min)), axis=-1)
-            jj, n_jets = dijet(jets)
-            e_t = np.sqrt(jj.mass**2 + jj.pt**2)
-            mt = np.sqrt(np.maximum(jj.mass**2 + 2 * (e_t * met.MET - jj.px * met_x - jj.py * met_y), 0))
+            constituents = gather(particles, cluster(particles, r, pt_min))
+            jets = ak.sum(constituents, axis=-1)
+            order = ak.argsort(jets.pt, ascending=False)
+            lead = ak.pad_none(jets[order][:, :2], 2, axis=1)
+            jj = lead[:, 0] + lead[:, 1]
             values = {"event": np.arange(len(events)), "truth": np.full(len(events), is_truth),
-                      "radius": np.full(len(events), r), "n_jets": n_jets, "mjj": jj.mass,
-                      "mt": mt if not is_truth else None}
-            for c, v in values.items():
-                columns[c].append(np.full(len(events), np.nan) if v is None else ak.to_numpy(ak.fill_none(v, np.nan)))
-    return {c: np.concatenate(v).astype(float) for c, v in columns.items()}
+                      "radius": np.full(len(events), r), "n_jets": ak.num(jets), "mjj": jj.mass}
+            if not is_truth:
+                e_t = np.sqrt(jj.mass**2 + jj.pt**2)
+                values["mt"] = np.sqrt(np.maximum(jj.mass**2 + 2 * (e_t * met.MET - jj.px * met_x - jj.py * met_y), 0))
+                msd = ak.pad_none(softdrop_mass(constituents[order][:, :2], r), 2, axis=1)
+                values["msd1"], values["msd2"] = msd[:, 0], msd[:, 1]
+            for c in EVENT_COLUMNS:
+                v = values.get(c)
+                columns[c].append(np.full(len(events), np.nan) if v is None else ak.to_numpy(ak.fill_none(v, np.nan)).astype(float))
+    return {c: np.concatenate(v) for c, v in columns.items()}
 
 
 def check_clustering(events, candidates, jets, radius=0.8, nudge=1e-6, trials=10):
