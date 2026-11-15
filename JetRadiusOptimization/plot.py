@@ -95,7 +95,7 @@ DISPLAY_STYLE = {"font.size": 11, "axes.labelsize": 12, "axes.titlesize": 12, "l
 
 
 SCORES = ("quality", "iou", "acceptance", "purity")
-# colour, marker and line style all change from curve to curve, so overlapping curves stay distinguishable
+# color, marker and line style all change from curve to curve, so overlapping curves stay distinguishable
 MARKERS = ("o", "s", "^", "v", "D", "P", "X", "<", ">", "h")
 LINES = ("-", "--", "-.", ":", "-", "--", "-.", ":", "-", "--")
 STYLE_CYCLE = cycler(color=plt.cm.tab10.colors) + cycler(marker=MARKERS) + cycler(linestyle=LINES)
@@ -103,7 +103,7 @@ QUANTILES = (5, 16, 50, 84, 95)
 
 
 def styles(n, cmap=None):
-    """n curve styles: the cycle above, or colours from a colour map with the same markers and lines."""
+    """n curve styles: the cycle above, or colors from a color map with the same markers and lines."""
     colors = cmap(np.linspace(0, 0.9, n)) if cmap else [plt.cm.tab10(i % 10) for i in range(n)]
     return [{"color": c, "marker": MARKERS[i % 10], "ls": LINES[i % 10]} for i, c in enumerate(colors)]
 
@@ -282,7 +282,7 @@ def event_display(events, masks, truth, visible, views, i, title, name):
 
 
 def stacked_display(views, title, name):
-    """All truth jets stacked around their axes, each normalised to its own visible pT."""
+    """All truth jets stacked around their axes, each normalized to its own visible pT."""
     views = ak.flatten(views)
     if not len(views):
         return
@@ -424,7 +424,7 @@ if __name__ == "__main__":
 
         fig, axes = plt.subplots(1, 2, figsize=(13, 5.5), sharey=True)
         for ax, title, radii in ((axes[0], f"R = {args.truth_radius}", [args.truth_radius] * len(scans)),
-                                 (axes[1], "best R (labelled)", best)):
+                                 (axes[1], "best R (labeled)", best)):
             samples = [values_at(scan, metric, args.truth_radius, r) if np.isfinite(r) else np.array([])
                        for scan, r in zip(scans, radii)]
             q = np.array([np.percentile(v, QUANTILES) if len(v) else [np.nan] * len(QUANTILES) for v in samples])
@@ -525,7 +525,7 @@ if __name__ == "__main__":
                     label=f"{label(scan)}, {pct}%" if len(scans) == 1 else None)
         if len(scans) > 1:
             ax.plot([], [], "-", color=color, label=label(scan))
-    if len(scans) > 1:   # line styles once, colours per model
+    if len(scans) > 1:   # line styles once, colors per model
         for pct, style in TRUTH_STYLES.items():
             ax.plot([], [], style, color="k", marker="none", label=f"$\\Delta R_{{{pct}}}$")
     ax.set_xlabel("truth radius $R_{\\text{DH}}$")
