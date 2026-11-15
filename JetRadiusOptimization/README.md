@@ -92,6 +92,18 @@ truth jet, its visible descendants), not over everything in the cone. The truth
 radii give a geometric containment radius for the dark-hadron jets that can be
 compared directly with the best R from quality and IoU.
 
+## Dijet and transverse mass
+
+The scores above measure containment jet by jet. The event-level quantities
+most sensitive to containment are the masses built from the two leading jets
+(pT > 15 GeV), computed for every R and R_DH:
+
+| Variable | Definition |
+|---|---|
+| `mjj` (visible) | invariant mass of the two leading visible jets at R |
+| `mt` | transverse mass of the dijet system with the generator-level missing pT, mT² = mjj² + 2 (√(mjj² + pT,jj²) MET − **pT,jj** · **MET**), as in the CMS semi-visible jet search |
+| `mjj` (truth) | invariant mass of the two leading dark-hadron jets at R_DH (all dark hadrons, including stable ones); approaches m_med when R_DH holds the whole dark shower |
+
 ## Relation to the literature
 
 | Here | Closest standard quantity | Reference |
@@ -113,16 +125,18 @@ compared directly with the best R from quality and IoU.
 
 ## Files and running
 
-- `radius.py` (library): clustering, matching, metrics.
+- `radius.py` (library): clustering, matching, metrics, dijet masses.
 - `scan.py`: runs the scan for one `run_model` directory (needs `events.root`
   and `Meta.pkl`; default R = 0.2–2.0
   and R_DH = 0.8, 1.0; 0.8 and 1.0 are always included in both grids; set
   `--truth-radii` for the full 2D grid) and writes `JetRadius.pkl`.
 - `plot.py`: scores vs R at one R_DH (inclusive and in bins of truth visible
-  pT), 2D maps of quality and IoU over (R, R_DH) with the best R per R_DH
-  marked, and the best-R points of all models overlaid on the same axes;
-  distributions of the scores and jet shapes at several R, and of the truth
-  containment radii at several R_DH. With `--displays`, also event displays
+  pT) and vs the model parameter, 2D maps of quality and IoU over (R_DH, R)
+  with the best R per R_DH marked, the best-R points of all models overlaid
+  on the same axes and as R / R_DH; distributions of the scores and jet shapes
+  at several R, and of the truth containment radii at several R_DH; the dijet
+  and transverse masses vs R and R_DH. R_DH is on the horizontal axis, since
+  it is chosen first and R is then chosen given R_DH. With `--displays`, also event displays
   and all truth jets stacked around their axes (needs `events.root` in the
   model directory).
 
@@ -145,16 +159,22 @@ python3 JetRadiusOptimization/plot.py -m "models/*" -x rinv --displays
 - `JetRadius.pkl` (from `scan.py`): the model metadata, the radius grids, and
   one row per (event, truth jet, R_DH, R) with the scores, `f_full`,
   `f_partial`, `f_nodh`, `n_dh`, `n_full`, the truth and matched-jet pT, and
-  the jet-shape variables above.
+  the jet-shape variables above; and one row per (event, R or R_DH) with the
+  number of jets, `mjj` and `mt`.
 - `JetRadius_plots/` (from `plot.py`, `--dir`):
 
 | File | Shows |
 |---|---|
 | `<score>.pdf` | each score vs R at one R_DH (`--truth-radius`, default 0.8), one curve per model |
+| `summary_<score>.pdf`, `summary_<score>_quantiles.pdf` | the score vs the model parameter (`-x`): mean at several R and at the best R; median, 16–84% and 5–95% ranges at R = R_DH and at the best R |
 | `<score>_ptbins_<model>.pdf` | each score vs R in bins of the truth jet's visible pT (`--pt-bins`) |
-| `best_radius_vs_pt_<score>.pdf` | best R per truth-pT bin |
-| `quality_2d_<model>.pdf`, `iou_2d_<model>.pdf` | the mean score over (R, R_DH), with the best R per R_DH marked and the mean truth ΔR₉₀/₉₅/₉₉ drawn |
-| `best_radius_quality.pdf`, `best_radius_iou.pdf` | the best-R points of all models overlaid, with the truth ΔR₉₅ (all three for one model) |
+| `best_radius_vs_pt_<score>.pdf` | best R per truth-pT bin; bins with fewer than `--min-jets` truth jets, or a zero score at every R, have no best R |
+| `truth_pt_dist.pdf` | truth jet visible pT, all models overlaid |
+| `quality_2d_<model>.pdf`, `iou_2d_<model>.pdf` | the mean score over (R_DH, R), with the best R per R_DH marked and the mean truth ΔR₉₀/₉₅/₉₉ drawn |
+| `best_radius_<score>.pdf` | the best-R points of all models overlaid, with the truth ΔR₉₅ (all three for one model) |
+| `best_ratio_<score>.pdf`, `best_ratio_<model>.pdf` | best R / R_DH vs R_DH: per score for all models, and per model for all scores with truth ΔR₉₅,₉₉ / R_DH |
+| `truth_jets_vs_rdh.pdf`, `mjj_truth_vs_rdh.pdf` | inputs for choosing R_DH: truth jets per event, the pT fraction in the two leading ones, and their dijet mass |
+| `mjj_vs_r.pdf`, `mt_vs_r.pdf`, `<mjj\|mt>_dist_<model>.pdf` | visible dijet and transverse mass vs R (median, 16–84% range and relative width; divided by m_med when known) and their distributions at several R |
 | `<quantity>_dist_<model>.pdf` | distributions of the scores, Ψ_T and the jet shapes at several R (`--dist-radii`) |
 | `truth_radius_dist_<model>.pdf`, `truth_r<pct>_by_rdh_<model>.pdf` | distributions of the truth ΔR₉₀/₉₅/₉₉, and of each at several R_DH (`--dist-truth-radii`) |
 | `truth_radius_vs_rdh.pdf` | mean truth ΔR₉₀/₉₅/₉₉ vs R_DH |

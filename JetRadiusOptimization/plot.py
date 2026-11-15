@@ -5,19 +5,32 @@ pattern; /store/... patterns are fetched from EOS. Each point is the mean over
 truth jets.
 
   * <metric>.pdf: metric vs visible-jet radius R, at one truth radius R_DH
+  * summary_<score>.pdf: mean score vs the model parameter (-x) at several R
+    (--dist-radii) and at the best R, and summary_<score>_quantiles.pdf, the
+    median and 16-84% / 5-95% ranges of the score at R = R_DH and at the best R
   * <score>_ptbins_<model>.pdf: each score vs R in bins of the truth jet's
-    visible pT, and best_radius_vs_pt_<score>.pdf, the best R per pT bin
+    visible pT, and best_radius_vs_pt_<score>.pdf, the best R per pT bin (not
+    drawn for bins with fewer than --min-jets truth jets or a zero score)
+  * truth_pt_dist.pdf: the truth jets' visible pT, all models overlaid
   * <quantity>_dist_<model>.pdf: distributions at several radii R (--dist-radii),
     truth_radius_dist_<model>.pdf: the truth jets' 90/95/99% containment radii,
     and truth_r<pct>_by_rdh_<model>.pdf: each of them for several truth radii
     R_DH (--dist-truth-radii)
   * truth_radius_vs_rdh.pdf: radii containing 90/95/99% of the truth jets'
-    visible pT, vs R_DH
-  * if the scans have several truth radii, for quality and iou:
-    <metric>_2d_<model>.pdf, the mean over (R_DH, R) with the best R per R_DH
-    marked, and best_radius_<metric>.pdf, the best-R stars of every model
-    overlaid on the same axes; both also show the truth jets' 90/95/99% radii
-    (only the 95% one when several models are overlaid)
+    visible pT, vs R_DH; truth_jets_vs_rdh.pdf: truth jets per event and the
+    fraction of their visible pT in the two leading ones, vs R_DH
+  * if the scans have several truth radii, for each score:
+    <metric>_2d_<model>.pdf (quality and iou), the mean over (R_DH, R) with
+    the best R per R_DH marked, and best_radius_<metric>.pdf, the best-R stars
+    of every model overlaid on the same axes; both also show the truth jets'
+    90/95/99% radii (only the 95% one when several models are overlaid);
+    best_ratio_<metric>.pdf, best R / R_DH vs R_DH for every model, and
+    best_ratio_<model>.pdf, the same for every score with truth DeltaR_95,99 / R_DH
+  * if the scans have the event table (scan.py event_scan): mjj_truth_vs_rdh.pdf,
+    the two leading truth jets' mass vs R_DH; mjj_vs_r.pdf and mt_vs_r.pdf,
+    the visible dijet mass and transverse mass vs R (median and 16-84% range,
+    divided by mmed when the models have one); <mjj|mt>_dist_<model>.pdf at
+    several R
   * with --displays, for models with a local events.root (first
     --display-max-events events), at --truth-radius:
     event_<i>_<model>.pdf, one event per truth-jet pT bin: the visible
@@ -39,6 +52,7 @@ import pickle
 import awkward as ak
 import matplotlib.pyplot as plt
 import numpy as np
+from cycler import cycler
 from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
 from matplotlib.colors import LogNorm
 from matplotlib.patches import Circle
@@ -81,6 +95,17 @@ DISPLAY_STYLE = {"font.size": 11, "axes.labelsize": 12, "axes.titlesize": 12, "l
 
 
 SCORES = ("quality", "iou", "acceptance", "purity")
+# colour, marker and line style all change from curve to curve, so overlapping curves stay distinguishable
+MARKERS = ("o", "s", "^", "v", "D", "P", "X", "<", ">", "h")
+LINES = ("-", "--", "-.", ":", "-", "--", "-.", ":", "-", "--")
+STYLE_CYCLE = cycler(color=plt.cm.tab10.colors) + cycler(marker=MARKERS) + cycler(linestyle=LINES)
+QUANTILES = (5, 16, 50, 84, 95)
+
+
+def styles(n, cmap=None):
+    """n curve styles: the cycle above, or colours from a colour map with the same markers and lines."""
+    colors = cmap(np.linspace(0, 0.9, n)) if cmap else [plt.cm.tab10(i % 10) for i in range(n)]
+    return [{"color": c, "marker": MARKERS[i % 10], "ls": LINES[i % 10]} for i, c in enumerate(colors)]
 
 
 def mean_grid(scan, metric, pt_range=(0, np.inf)):
@@ -101,9 +126,9 @@ def mean_grid(scan, metric, pt_range=(0, np.inf)):
 
 
 def square_axes(ax, scan, line_color, pad=0.0):
-    """Visible radius on x, truth radius on y: same range, ticks and scale, with R = R_DH.
+    """Truth radius on x (it is chosen first), visible radius on y: same range, ticks and scale, with R = R_DH.
 
-    pad: extra margin on both axes, e.g. for points spread within their row
+    pad: extra margin on both axes, e.g. for points spread within their column
     """
     half = [np.min(np.diff(r)) / 2 if len(r) > 1 else 0.1 for r in (scan["radii"], scan["truth_radii"])]
     lo = max(scan["radii"][0] - half[0], scan["truth_radii"][0] - half[1])
@@ -112,7 +137,36 @@ def square_axes(ax, scan, line_color, pad=0.0):
     ax.plot([lo, hi], [lo, hi], "-", color=line_color, lw=0.8, alpha=0.5, label="$R = R_{\\text{DH}}$")
     ticks = np.arange(np.ceil(lo * 5) / 5, hi + 1e-9, 0.2)
     ax.set(xlim=(lo, hi), ylim=(lo, hi), xticks=ticks, yticks=ticks, aspect="equal",
-           xlabel="visible jet radius R", ylabel="truth radius $R_{\\text{DH}}$")
+           xlabel="truth radius $R_{\\text{DH}}$", ylabel="visible jet radius R")
+
+
+def best_radii(scan, metric, pt_range=(0, np.inf), min_jets=1):
+    """Best R per truth radius by the mean metric; NaN where the optimum is undefined.
+
+    Undefined: fewer than min_jets truth jets, or a score that is zero (or NaN) at every R,
+    where argmax would just return the first R.
+    """
+    grid = mean_grid(scan, metric, pt_range)
+    m = scan["metrics"]
+    first = (m["radius"] == scan["radii"][0]) & (m["truth_pt"] >= pt_range[0]) & (m["truth_pt"] < pt_range[1])
+    count = np.array([np.sum(first & (m["truth_radius"] == t)) for t in scan["truth_radii"]])
+    filled = np.nan_to_num(grid, nan=-1)
+    best = np.array(scan["radii"])[filled.argmax(axis=1)]
+    return np.where((count >= min_jets) & (filled.max(axis=1) > 0), best, np.nan), grid
+
+
+def values_at(scan, metric, truth_radius, radius_value):
+    """The metric of every truth jet at one (R_DH, R), NaNs dropped."""
+    m = scan["metrics"]
+    v = m[metric][(m["truth_radius"] == truth_radius) & (m["radius"] == radius_value)]
+    return v[np.isfinite(v)]
+
+
+def band(ax, x, samples, style, label, alpha=0.15):
+    """Median line with the 16-84% range shaded, for a list of samples at the x values."""
+    q = np.array([np.nanpercentile(s, (16, 50, 84)) if len(s) else (np.nan,) * 3 for s in samples])
+    ax.plot(x, q[:, 1], label=label, **style)
+    ax.fill_between(x, q[:, 0], q[:, 2], color=style["color"], alpha=alpha, lw=0)
 
 
 def legend(ax):
@@ -130,10 +184,29 @@ def truth_radius(scan, pct):
     return np.array([np.nanmean(m[f"truth_r{pct}"][first & (m["truth_radius"] == t)]) for t in scan["truth_radii"]])
 
 
+def truth_jet_counts(scan):
+    """Per truth radius: mean truth jets per event (with visible decays) and the mean fraction
+    of an event's truth visible pT in its two leading truth jets."""
+    m = scan["metrics"]
+    first = m["radius"] == scan["radii"][0]   # one row per truth jet
+    n_events = len(np.unique(scan["events"]["event"])) if "events" in scan else int(m["event"].max()) + 1
+    n_jets, lead2 = [], []
+    for t in scan["truth_radii"]:
+        sel = first & (m["truth_radius"] == t)
+        order = np.lexsort((-m["truth_pt"][sel], m["event"][sel]))   # by event, leading jet first
+        event, pt = m["event"][sel][order].astype(int), m["truth_pt"][sel][order]
+        rank = np.arange(len(event)) - np.searchsorted(event, event)
+        total = np.bincount(event, weights=pt)
+        leading = np.bincount(event[rank < 2], weights=pt[rank < 2], minlength=len(total))
+        n_jets.append(len(event) / n_events)
+        lead2.append(np.mean(leading[total > 0] / total[total > 0]))
+    return np.array(n_jets), np.array(lead2)
+
+
 def circle(ax, center, r, label=None, **kw):
     """Circle with a line (not a box) in the legend."""
     ax.add_patch(Circle(center, r, fill=False, **kw))
-    ax.plot([], [], color=kw.get("color"), ls=kw.get("ls", "-"), lw=kw.get("lw", 1), label=label)
+    ax.plot([], [], color=kw.get("color"), ls=kw.get("ls", "-"), lw=kw.get("lw", 1), marker="none", label=label)
 
 
 def truth_views(events, masks, truth):
@@ -255,7 +328,7 @@ def stacked_display(views, title, name):
     ax_psi.plot(rbins[1:], np.cumsum(own) / own.sum(), "r-", lw=1.2)
     ax_psi.set_ylim(0, 1.02)
     ax_psi.set_ylabel("cumulative fraction of truth visible $p_{\\text{T}}$ (red line)", color="tab:red")
-    ax.set(xlim=(0, DISPLAY_LIM), xlabel="$\\Delta R$ to dark-hadron jet axis",
+    ax.set(yscale="log", xlim=(0, DISPLAY_LIM), xlabel="$\\Delta R$ to dark-hadron jet axis",
            ylabel="mean $p_{\\text{T}}$ per bin / truth visible $p_{\\text{T}}$")
     ax.set_title("$p_{\\text{T}}$ vs distance from the dark-hadron axis, stacked by origin", fontsize=12)
     ax.legend(loc="upper right", bbox_to_anchor=(0.97, 0.75), framealpha=0.9)
@@ -302,6 +375,7 @@ if __name__ == "__main__":
     parser.add_argument("--dist-truth-radii", type=float, nargs="+", default=[0.4, 0.8, 1.2, 1.6, 2.0], help="truth radii R_DH for the truth-radius distributions")
     parser.add_argument("--dist-radii", type=float, nargs="+", default=[0.4, 0.8, 1.2, 1.6, 2.0], help="radii R for the distributions")
     parser.add_argument("--pt-bins", type=float, nargs="+", default=[0, 50, 100, 200, np.inf], help="edges of the truth-jet visible pT bins [GeV]")
+    parser.add_argument("--min-jets", type=int, default=100, help="fewest truth jets in a pT bin for its best R to be shown")
     parser.add_argument("--displays", action="store_true", help="also make event displays and stacked truth jets (needs events.root)")
     parser.add_argument("--display-radii", type=float, nargs="+", default=[0.4, 0.8, 1.2, 1.6], help="radii R drawn in the displays")
     parser.add_argument("--display-max-events", type=int, default=1000, help="events read for the displays")
@@ -319,40 +393,87 @@ if __name__ == "__main__":
         return f"{args.x} = {scan['model'][args.x]}"
 
     set_plot_style()
+    plt.rcParams["axes.prop_cycle"] = STYLE_CYCLE
     os.makedirs(args.dir, exist_ok=True)
+    xs = [scan["model"][args.x] for scan in scans]
+    at_t = [scan["truth_radii"].index(args.truth_radius) for scan in scans]
+    rdh_title = f"truth radius $R_{{\\text{{DH}}}}$ = {args.truth_radius}"
 
     for metric in args.y:
         fig, ax = plt.subplots()
-        for scan in scans:
-            t = scan["truth_radii"].index(args.truth_radius)
-            ax.plot(scan["radii"], mean_grid(scan, metric)[t], marker="o", label=label(scan))
+        for scan, t in zip(scans, at_t):
+            ax.plot(scan["radii"], mean_grid(scan, metric)[t], label=label(scan))
         ax.set_xlabel("visible jet radius R")
         ax.set_ylabel(f"mean {LABELS[metric]}")
-        ax.set_title(f"truth radius $R_{{\\text{{DH}}}}$ = {args.truth_radius}", fontsize=14)
+        ax.set_title(rdh_title, fontsize=14)
         legend(ax)
         save(fig, metric)
+
+    # each score vs the model parameter: means at several R and at the best R, then its distribution
+    for metric in SCORES:
+        best = [best_radii(scan, metric)[0][t] for scan, t in zip(scans, at_t)]
+        fig, ax = plt.subplots()
+        for r in args.dist_radii:
+            ax.plot(xs, [mean_grid(scan, metric)[t][scan["radii"].index(r)] if r in scan["radii"] else np.nan
+                         for scan, t in zip(scans, at_t)], label=f"R = {r}")
+        ax.plot(xs, [np.nanmax(mean_grid(scan, metric)[t]) for scan, t in zip(scans, at_t)], "k*-", ms=11, label="best R")
+        ax.set(xlabel=args.x, ylabel=f"mean {LABELS[metric]}")
+        ax.set_title(rdh_title, fontsize=14)
+        legend(ax)
+        save(fig, f"summary_{metric}")
+
+        fig, axes = plt.subplots(1, 2, figsize=(13, 5.5), sharey=True)
+        for ax, title, radii in ((axes[0], f"R = {args.truth_radius}", [args.truth_radius] * len(scans)),
+                                 (axes[1], "best R (labelled)", best)):
+            samples = [values_at(scan, metric, args.truth_radius, r) if np.isfinite(r) else np.array([])
+                       for scan, r in zip(scans, radii)]
+            q = np.array([np.percentile(v, QUANTILES) if len(v) else [np.nan] * len(QUANTILES) for v in samples])
+            ax.fill_between(xs, q[:, 0], q[:, 4], color="tab:blue", alpha=0.15, lw=0, label="5-95%")
+            ax.fill_between(xs, q[:, 1], q[:, 3], color="tab:blue", alpha=0.3, lw=0, label="16-84%")
+            ax.plot(xs, q[:, 2], "o-", color="tab:blue", label="median")
+            ax.plot(xs, [v.mean() if len(v) else np.nan for v in samples], "k^--", label="mean")
+            if radii is best:
+                for x, r, y in zip(xs, best, q[:, 4]):
+                    ax.annotate(f"{r:g}", (x, y), textcoords="offset points", xytext=(0, 4), ha="center", fontsize=9)
+            ax.set(xlabel=args.x, title=f"{title}, $R_{{\\text{{DH}}}}$ = {args.truth_radius}")
+        axes[0].set_ylabel(LABELS[metric])
+        axes[0].legend(fontsize="small")
+        fig.tight_layout()
+        save(fig, f"summary_{metric}_quantiles")
+
+    # the truth jets' visible pT: how similar the models' jet pT spectra are
+    first = [(s["metrics"]["truth_radius"] == args.truth_radius) & (s["metrics"]["radius"] == s["radii"][0]) for s in scans]
+    truth_pts = [s["metrics"]["truth_pt"][f] for s, f in zip(scans, first)]
+    fig, ax = plt.subplots()
+    bins = np.linspace(0, np.percentile(np.concatenate(truth_pts), 99.5), 51)
+    for scan, v, style in zip(scans, truth_pts, styles(len(scans))):
+        ax.hist(v, bins=bins, histtype="step", density=True, color=style["color"], ls=style["ls"], lw=1.5,
+                label=f"{label(scan)}: {len(v)} jets, mean {v.mean():.0f} GeV")
+    ax.set(yscale="log", xlabel="truth jet visible $p_{\\text{T}}$ [GeV]", ylabel="truth jets (normalized)")
+    ax.set_title(rdh_title, fontsize=14)
+    legend(ax)
+    save(fig, "truth_pt_dist")
 
     pt_bins = list(zip(args.pt_bins[:-1], args.pt_bins[1:]))
     pt_label = [f"{lo:g}-{hi:g} GeV" if np.isfinite(hi) else f"> {lo:g} GeV" for lo, hi in pt_bins]
     for metric in SCORES:
         fig_best, ax_best = plt.subplots()
-        for scan in scans:
-            t = scan["truth_radii"].index(args.truth_radius)
+        for scan, t in zip(scans, at_t):
             fig, ax = plt.subplots()
             best = []
             for pt_range, name in zip(pt_bins, pt_label):
-                curve = mean_grid(scan, metric, pt_range)[t]
-                ax.plot(scan["radii"], curve, marker="o", label=f"truth $p_{{\\text{{T}}}}$ {name}")
-                best.append(scan["radii"][np.nanargmax(curve)] if np.isfinite(curve).any() else np.nan)
+                r_best, grid = best_radii(scan, metric, pt_range, args.min_jets)
+                ax.plot(scan["radii"], grid[t], label=f"truth $p_{{\\text{{T}}}}$ {name}")
+                best.append(r_best[t])
             ax.set_xlabel("visible jet radius R")
             ax.set_ylabel(f"mean {LABELS[metric]}")
             ax.set_title(f"{label(scan)}, $R_{{\\text{{DH}}}}$ = {args.truth_radius}", fontsize=14)
             legend(ax)
             save(fig, f"{metric}_ptbins_{args.x}_{scan['model'][args.x]}")
-            ax_best.plot(pt_label, best, marker="o", label=label(scan))
+            ax_best.plot(pt_label, best, label=label(scan))
         ax_best.set_xlabel("truth jet visible $p_{\\text{T}}$")
         ax_best.set_ylabel(f"best visible jet radius R ({metric})")
-        ax_best.set_title(f"$R_{{\\text{{DH}}}}$ = {args.truth_radius}", fontsize=14)
+        ax_best.set_title(f"$R_{{\\text{{DH}}}}$ = {args.truth_radius}; not shown: < {args.min_jets} jets or zero score", fontsize=11)
         legend(ax_best)
         save(fig_best, f"best_radius_vs_pt_{metric}")
 
@@ -367,6 +488,7 @@ if __name__ == "__main__":
             fig, ax = plt.subplots()
             for r in args.dist_radii:
                 ax.hist(m[q][at_truth & (m["radius"] == r)], bins=bins, histtype="step", density=True, label=f"R = {r}")
+            ax.set_yscale("log")
             ax.set_xlabel(LABELS[q])
             ax.set_ylabel("truth jets (normalized)")
             ax.set_title(f"{label(scan)}, $R_{{\\text{{DH}}}}$ = {args.truth_radius}", fontsize=14)
@@ -376,6 +498,7 @@ if __name__ == "__main__":
         first = at_truth & (m["radius"] == scan["radii"][0])
         for pct in radius.SHAPE_PCTS:
             ax.hist(m[f"truth_r{pct}"][first], bins=np.linspace(0, 3, 61), histtype="step", density=True, label=f"$\\Delta R_{{{pct}}}$")
+        ax.set_yscale("log")
         ax.set_xlabel("radius around the dark-hadron jet axis containing x% of its visible $p_{\\text{T}}$")
         ax.set_ylabel("truth jets (normalized)")
         ax.set_title(f"{label(scan)}, $R_{{\\text{{DH}}}}$ = {args.truth_radius}", fontsize=14)
@@ -388,6 +511,7 @@ if __name__ == "__main__":
                 if t in scan["truth_radii"]:
                     ax.hist(m[f"truth_r{pct}"][first & (m["truth_radius"] == t)], bins=np.linspace(0, 3, 61),
                             histtype="step", density=True, label=f"$R_{{\\text{{DH}}}}$ = {t}")
+            ax.set_yscale("log")
             ax.set_xlabel(f"truth $\\Delta R_{{{pct}}}$: radius containing {pct}% of the visible $p_{{\\text{{T}}}}$")
             ax.set_ylabel("truth jets (normalized)")
             ax.set_title(label(scan), fontsize=14)
@@ -403,48 +527,128 @@ if __name__ == "__main__":
             ax.plot([], [], "-", color=color, label=label(scan))
     if len(scans) > 1:   # line styles once, colours per model
         for pct, style in TRUTH_STYLES.items():
-            ax.plot([], [], style, color="k", label=f"$\\Delta R_{{{pct}}}$")
+            ax.plot([], [], style, color="k", marker="none", label=f"$\\Delta R_{{{pct}}}$")
     ax.set_xlabel("truth radius $R_{\\text{DH}}$")
     ax.set_ylabel("mean truth $\\Delta R_{90/95/99}$")
     legend(ax)
     save(fig, "truth_radius_vs_rdh")
 
+    # inputs for choosing R_DH first: how many truth jets an event has, and how much of the
+    # truth visible pT the two leading ones carry (two dark quarks per event)
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5.5))
+    for scan, style in zip(scans, styles(len(scans))):
+        n_jets, lead2 = truth_jet_counts(scan)
+        axes[0].plot(scan["truth_radii"], n_jets, label=label(scan), **style)
+        axes[1].plot(scan["truth_radii"], lead2, label=label(scan), **style)
+    axes[0].set(xlabel="truth radius $R_{\\text{DH}}$", ylabel="mean truth jets per event (with visible decays)")
+    axes[0].axhline(2, color="0.5", lw=0.8)
+    axes[1].set(xlabel="truth radius $R_{\\text{DH}}$", ylabel="fraction of truth visible $p_{\\text{T}}$ in the 2 leading truth jets")
+    legend(axes[1])
+    fig.tight_layout()
+    save(fig, "truth_jets_vs_rdh")
+
     multi = [s for s in scans if len(s["truth_radii"]) > 1]
-    for metric in ("quality", "iou") if multi else ():
+    for metric in SCORES if multi else ():
         fig_best, ax_best = plt.subplots()
-        colors = plt.cm.viridis(np.linspace(0, 0.9, len(multi)))
-        # spread the models vertically within each R_DH row so equal best-R points stay visible
+        fig_ratio, ax_ratio = plt.subplots()
+        # spread the models horizontally within each R_DH column so equal best-R points stay visible
         step = np.min(np.diff(multi[0]["truth_radii"]))
         nudge = (np.arange(len(multi)) - (len(multi) - 1) / 2) * 0.6 * step / max(len(multi), 1)
-        for scan, color, dy in zip(multi, colors, nudge):
-            grid = mean_grid(scan, metric)
-            best = np.array(scan["radii"])[np.nanargmax(grid, axis=1)]
-            fig, ax = plt.subplots()
-            image = ax.pcolormesh(scan["radii"], scan["truth_radii"], grid, shading="nearest")
-            ax.plot(best, scan["truth_radii"], "w*", ms=10)
-            for pct, style in TRUTH_STYLES.items():
-                ax.plot(truth_radius(scan, pct), scan["truth_radii"], style, color="w", lw=1.5,
-                        label=f"truth $\\Delta R_{{{pct}}}$")
-            square_axes(ax, scan, "w")
-            # upper left (small R, large R_DH) holds no stars or lines; dark frame for the white lines
-            ax.legend(fontsize="x-small", loc="upper left", facecolor="0.2", labelcolor="w", framealpha=0.7)
-            ax.set_title(f"{label(scan)} (star = best R)", fontsize=14)
-            fig.colorbar(image, ax=ax, label=f"mean {metric}")
-            save(fig, f"{metric}_2d_{args.x}_{scan['model'][args.x]}")
-            ax_best.plot(best, np.array(scan["truth_radii"]) + dy, "*-", color=color, ms=9, lw=1, label=label(scan))
-            for pct, style in TRUTH_STYLES.items() if len(multi) == 1 else [(95, TRUTH_STYLES[95])]:
-                ax_best.plot(truth_radius(scan, pct), scan["truth_radii"], style, color=color, lw=1,
+        for scan, style, dx in zip(multi, styles(len(multi), plt.cm.viridis), nudge):
+            best, grid = best_radii(scan, metric)
+            truth_r = np.array(scan["truth_radii"])
+            if metric in ("quality", "iou"):
+                fig, ax = plt.subplots()
+                image = ax.pcolormesh(truth_r, scan["radii"], grid.T, shading="nearest")
+                ax.plot(truth_r, best, "w*", ms=10)
+                for pct, ls in TRUTH_STYLES.items():
+                    ax.plot(truth_r, truth_radius(scan, pct), ls, color="w", lw=1.5, label=f"truth $\\Delta R_{{{pct}}}$")
+                square_axes(ax, scan, "w")
+                # stars and lines can fill any corner, so the legend goes below; dark frame for the white lines
+                ax.legend(fontsize="x-small", ncol=2, loc="upper center", bbox_to_anchor=(0.5, -0.14),
+                          facecolor="0.2", labelcolor="w", framealpha=0.9)
+                ax.set_title(f"{label(scan)} (star = best R)", fontsize=14)
+                fig.colorbar(image, ax=ax, label=f"mean {metric}")
+                save(fig, f"{metric}_2d_{args.x}_{scan['model'][args.x]}")
+            ax_best.plot(truth_r + dx, best, "*-", color=style["color"], ms=9, lw=1, label=label(scan))
+            for pct, ls in TRUTH_STYLES.items() if len(multi) == 1 else [(95, TRUTH_STYLES[95])]:
+                ax_best.plot(truth_r, truth_radius(scan, pct), ls, color=style["color"], lw=1, marker="none",
                              label=f"truth $\\Delta R_{{{pct}}}$" if len(multi) == 1 else None)
+            ax_ratio.plot(truth_r, best / truth_r, label=label(scan), **style)
             for t, r, q in zip(scan["truth_radii"], best, np.nanmax(grid, axis=1)):
                 print(f"{label(scan)}, R_DH = {t}: best R by {metric} = {r} (mean {q:.3f})")
         square_axes(ax_best, multi[0], "k", pad=0.06)
         truth_lines = "truth $\\Delta R_{90/95/99}$ (dotted/dashed/dash-dot)" if len(multi) == 1 else "truth $\\Delta R_{95}$ (dashed)"
-        ax_best.set_title(f"best R by {metric} (stars), {truth_lines}" + (", rows spread" if len(multi) > 1 else ""), fontsize=11)
+        ax_best.set_title(f"best R by {metric} (stars), {truth_lines}" + (", columns spread" if len(multi) > 1 else ""), fontsize=11)
         if len(multi) == 1:
             ax_best.legend(fontsize="x-small", loc="upper left")
         else:
             legend(ax_best)
         save(fig_best, f"best_radius_{metric}")
+        ax_ratio.axhline(1, color="0.5", lw=0.8)
+        ax_ratio.set(xlabel="truth radius $R_{\\text{DH}}$", ylabel=f"best R / $R_{{\\text{{DH}}}}$ (by {metric})")
+        legend(ax_ratio)
+        save(fig_ratio, f"best_ratio_{metric}")
+
+    # per model: how far the jet spreads after the decay, R / R_DH, for each score and for the truth containment
+    for scan in multi:
+        truth_r = np.array(scan["truth_radii"])
+        fig, ax = plt.subplots()
+        for metric in SCORES:
+            ax.plot(truth_r, best_radii(scan, metric)[0] / truth_r, label=f"best R by {metric}")
+        for pct in (95, 99):
+            ax.plot(truth_r, truth_radius(scan, pct) / truth_r, TRUTH_STYLES[pct], color="k", marker="none",
+                    label=f"truth $\\Delta R_{{{pct}}}$ / $R_{{\\text{{DH}}}}$")
+        ax.axhline(1, color="0.5", lw=0.8)
+        ax.set(xlabel="truth radius $R_{\\text{DH}}$", ylabel="R / $R_{\\text{DH}}$")
+        ax.set_title(label(scan), fontsize=14)
+        legend(ax)
+        save(fig, f"best_ratio_{args.x}_{scan['model'][args.x]}")
+
+    # dijet and transverse mass (event table from scan.py), divided by mmed when every model has one
+    with_events = [s for s in scans if "events" in s]
+    norm = bool(with_events) and all(s["model"].get("mmed") for s in with_events)
+    unit = " / $m_{\\text{med}}$" if norm else " [GeV]"
+    mass_label = {"mjj": "$m_{\\text{jj}}$", "mt": "$m_{\\text{T}}$"}
+
+    def event_values(scan, q, truth, r):
+        e = scan["events"]
+        v = e[q][(e["truth"] == truth) & (e["radius"] == r) & np.isfinite(e[q])]
+        return v / scan["model"]["mmed"] if norm else v
+
+    if with_events:
+        ev_styles = styles(len(with_events))
+        fig, ax = plt.subplots()
+        for scan, style in zip(with_events, ev_styles):
+            band(ax, scan["truth_radii"], [event_values(scan, "mjj", 1, t) for t in scan["truth_radii"]], style, label(scan))
+        ax.set(xlabel="truth radius $R_{\\text{DH}}$", ylabel=f"two leading truth jets: {mass_label['mjj']}{unit}")
+        ax.set_title("dark-hadron jets (incl. stable dark hadrons): median, 16-84%", fontsize=11)
+        legend(ax)
+        save(fig, "mjj_truth_vs_rdh")
+        for q in ("mjj", "mt"):
+            fig, axes = plt.subplots(1, 2, figsize=(13, 5.5))
+            for scan, style in zip(with_events, ev_styles):
+                samples = [event_values(scan, q, 0, r) for r in scan["radii"]]
+                band(axes[0], scan["radii"], samples, style, label(scan), alpha=0.1)
+                qs = np.array([np.percentile(s, (16, 50, 84)) if len(s) else (np.nan,) * 3 for s in samples])
+                axes[1].plot(scan["radii"], (qs[:, 2] - qs[:, 0]) / 2 / qs[:, 1], label=label(scan), **style)
+            axes[0].set(xlabel="visible jet radius R", ylabel=f"{mass_label[q]}{unit} (median, 16-84%)")
+            axes[1].set(xlabel="visible jet radius R", ylabel=f"{mass_label[q]} relative width (84-16%) / 2 / median")
+            legend(axes[1])
+            fig.tight_layout()
+            save(fig, f"{q}_vs_r")
+            for scan in with_events:
+                fig, ax = plt.subplots()
+                values = np.concatenate([event_values(scan, q, 0, r) for r in args.dist_radii])
+                bins = np.linspace(0, np.percentile(values, 99.5), 51) if len(values) else 50
+                for r in args.dist_radii:
+                    ax.hist(event_values(scan, q, 0, r), bins=bins, histtype="step", density=True, label=f"R = {r}")
+                if norm:
+                    ax.axvline(1, color="0.5", lw=0.8)
+                ax.set(yscale="log", xlabel=f"two leading visible jets: {mass_label[q]}{unit}", ylabel="events (normalized)")
+                ax.set_title(label(scan), fontsize=14)
+                legend(ax)
+                save(fig, f"{q}_dist_{args.x}_{scan['model'][args.x]}")
 
     for scan in scans if args.displays else ():
         if os.path.exists(os.path.join(scan["dir"], "events.root")):

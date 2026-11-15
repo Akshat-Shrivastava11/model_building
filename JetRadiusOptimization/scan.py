@@ -14,7 +14,7 @@ import pickle
 import numpy as np
 from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
 
-from radius import PT_MIN, check_clustering, load, radius_scan
+from radius import PT_MIN, check_clustering, event_scan, load, radius_scan
 
 ALWAYS_RADII = (0.8, 1.0)
 
@@ -49,6 +49,7 @@ if __name__ == "__main__":
         "min_containment": args.min_containment,
         "metrics": radius_scan(events, args.radii, truth_radii=args.truth_radii,
                                pt_min=args.pt_min, min_containment=args.min_containment),
+        "events": event_scan(events, args.radii, args.truth_radii, pt_min=args.pt_min),
     }
     with open(os.path.join(args.dir, "JetRadius.pkl"), "wb") as out:
         pickle.dump(output, out)

@@ -44,6 +44,13 @@ Jet shapes, with the Histogram.py definitions (DeltaR in eta-phi):
     jet_r90/95/99, jet_girth, jet_ptd, jet_major, jet_minor, jet_nconst
                      shapes of the matched visible jet J over its own constituents
 
+event_scan adds one row per (event, radius) with the dijet system of the two
+leading jets: its mass mjj and, for visible jets, the transverse mass mt with the
+generator-level missing pT (as in the CMS semi-visible jet search),
+    mt^2 = mjj^2 + 2 (sqrt(mjj^2 + pT_jj^2) MET - pT_jj . MET)
+For truth jets (all dark hadrons, including the stable ones) mjj is the
+reference: it approaches the mediator mass when R_DH holds the whole shower.
+
 check_clustering compares our clustering with the stored GenFatJet and
 DarkHadronJet (scan.py --check-clustering).
 """
@@ -240,6 +247,39 @@ def radius_scan(events, radii, truth_radii=(0.8,), pt_min=PT_MIN, min_containmen
                         row[f"jet_{k}"] = js[k][i][j] if j >= 0 else np.nan
                     rows.append(dict(row, event=i, truth_radius=r_dh, radius=r))
     return {c: np.array([row[c] for row in rows], dtype=float) for c in COLUMNS}
+
+
+EVENT_COLUMNS = ("event", "truth", "radius", "n_jets", "mjj", "mt")
+
+
+def dijet(jets):
+    """Sum of the two leading jets per event (None with fewer than two) and the number of jets."""
+    lead = jets[ak.argsort(jets.pt, ascending=False)][:, :2]
+    lead = ak.mask(lead, ak.num(lead) == 2)
+    return lead[:, 0] + lead[:, 1], ak.num(jets)
+
+
+def event_scan(events, radii, truth_radii=(), pt_min=PT_MIN):
+    """Dijet mjj and mt per event, for visible jets at each radius and truth jets at each truth radius.
+
+    truth = 1 for truth (dark-hadron) jets, which have no mt. Events with fewer than two jets give NaN.
+    """
+    met = events.GenMissingET[:, 0]
+    met_x, met_y = met.MET * np.cos(met.Phi), met.MET * np.sin(met.Phi)
+    columns = {c: [] for c in EVENT_COLUMNS}
+    for is_truth, rs in ((0, radii), (1, truth_radii)):
+        particles = events.DarkHadronCandidate if is_truth else events.GenCandidate
+        for r in rs:
+            jets = ak.sum(gather(particles, cluster(particles, r, pt_min)), axis=-1)
+            jj, n_jets = dijet(jets)
+            e_t = np.sqrt(jj.mass**2 + jj.pt**2)
+            mt = np.sqrt(np.maximum(jj.mass**2 + 2 * (e_t * met.MET - jj.px * met_x - jj.py * met_y), 0))
+            values = {"event": np.arange(len(events)), "truth": np.full(len(events), is_truth),
+                      "radius": np.full(len(events), r), "n_jets": n_jets, "mjj": jj.mass,
+                      "mt": mt if not is_truth else None}
+            for c, v in values.items():
+                columns[c].append(np.full(len(events), np.nan) if v is None else ak.to_numpy(ak.fill_none(v, np.nan)))
+    return {c: np.concatenate(v).astype(float) for c, v in columns.items()}
 
 
 def check_clustering(events, candidates, jets, radius=0.8, nudge=1e-6, trials=10):
