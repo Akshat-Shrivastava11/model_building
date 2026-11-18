@@ -216,6 +216,40 @@ def jet_shapes(jets, radii=()):
     return {k: ak.to_list(ak.fill_none(v, np.nan)) for k, v in shapes.items()}
 
 
+# Pythia status of the outgoing particles of the hard process, here the two dark quarks of the mediator decay
+HARD_STATUS = 23
+
+
+def dark_quark_shapes(events, quark_ids, radii=(), max_dr=None):
+    """Shape of the dark-hadron shower around each of the two dark quarks of the hard process, as numpy columns.
+
+    Every dark hadron (DarkHadronCandidate, stable ones included) is assigned to the nearer dark quark in (eta, phi),
+    and dropped if max_dr is given and both quarks are farther. One row per dark quark: its pt and eta; n_dh and mass,
+    the number and invariant mass of its dark hadrons; r90, r95, r99, the radius around the quark containing that
+    percentage of their pT; psi_<r>, the integrated jet shape Psi(r). Events without exactly two such quarks are skipped.
+    """
+    gen = events.GenParticle
+    is_quark = ak.unflatten(np.isin(np.abs(ak.flatten(gen.PID)), quark_ids), ak.num(gen)) & (gen.Status == HARD_STATUS)
+    two = ak.to_numpy(ak.sum(is_quark, axis=1) == 2)
+    quarks, hadrons = gen[is_quark][two], events.DarkHadronCandidate[two]
+    pairs = ak.cartesian([hadrons, quarks], nested=True)
+    dr = pairs["0"].deltaR(pairs["1"])
+    nearest = ak.argmin(dr, axis=-1)
+    near = True if max_dr is None else ak.min(dr, axis=-1) < max_dr
+    constituents = ak.concatenate([hadrons[(nearest == k) & near][:, None] for k in (0, 1)], axis=1)
+    shapes = jet_shapes(jet_records(constituents, axis=quarks), radii)
+    columns = {
+        "event": np.repeat(np.flatnonzero(two), 2),
+        "quark": np.tile([0, 1], int(two.sum())),
+        "pt": ak.flatten(quarks.pt),
+        "eta": ak.flatten(quarks.eta),
+        "n_dh": ak.flatten(ak.num(constituents, axis=-1)),
+        "mass": ak.flatten(ak.sum(constituents, axis=-1).mass),
+    }
+    columns.update({k: np.ravel(v) for k, v in shapes.items() if k in ("r90", "r95", "r99") or k.startswith("psi_")})
+    return {k: np.asarray(v, dtype=float) for k, v in columns.items()}
+
+
 def radius_scan(events, radii, truth_radii=(0.8,), pt_min=PT_MIN, min_containment=0.95):
     """Metrics for every truth jet at every (truth radius, radius), as numpy columns."""
     # bit j of each GenCandidate's mask: descends from DarkHadronCandidate j

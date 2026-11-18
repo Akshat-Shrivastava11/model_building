@@ -1,8 +1,10 @@
 """Run the jet-radius scan for one generated model.
 
 Reads events.root and Meta.pkl from a model directory made by run_model and
-writes JetRadius.pkl next to them: the model metadata and one row of metrics
-per (event, truth jet, truth radius, radius), as defined in radius.py.
+writes JetRadius.pkl next to them: the model metadata, one row of metrics
+per (event, truth jet, truth radius, radius), one row per event and radius for
+the dijet system, and one row per dark quark for the shape of the dark-hadron
+shower around it, as defined in radius.py.
 
     python3 JetRadiusOptimization/scan.py -d models/<model>
     python3 JetRadiusOptimization/scan.py -d models/<model> --truth-radii $(seq 0.2 0.2 2.0)
@@ -14,7 +16,7 @@ import pickle
 import numpy as np
 from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
 
-from radius import PT_MIN, check_clustering, event_scan, load, radius_scan
+from radius import PT_MIN, check_clustering, dark_quark_shapes, event_scan, load, radius_scan
 
 ALWAYS_RADII = (0.8, 1.0)
 
@@ -25,6 +27,7 @@ if __name__ == "__main__":
     parser.add_argument("--truth-radii", type=float, nargs="+", default=[0.8], help="radii of the dark-hadron (truth) jets; 0.8 and 1.0 are always added")
     parser.add_argument("--pt-min", type=float, default=PT_MIN, help="minimum clustered jet pT [GeV]")
     parser.add_argument("--min-containment", type=float, default=0.95, help="fraction of a dark hadron's visible pT a jet must hold for the dark hadron to be complete in the jet (1 = every visible descendant)")
+    parser.add_argument("--quark-max-dr", type=float, default=None, help="for the shower around the dark quarks: drop dark hadrons farther than this from both dark quarks (default: keep all)")
     parser.add_argument("-n", "--max-events", type=int, default=None, help="number of events")
     parser.add_argument("--check-clustering", action="store_true", help="first compare our R = 0.8 clustering with the stored GenFatJet and DarkHadronJet")
     args = parser.parse_args()
@@ -50,6 +53,8 @@ if __name__ == "__main__":
         "metrics": radius_scan(events, args.radii, truth_radii=args.truth_radii,
                                pt_min=args.pt_min, min_containment=args.min_containment),
         "events": event_scan(events, args.radii, args.truth_radii, pt_min=args.pt_min),
+        "quark_max_dr": args.quark_max_dr,
+        "quarks": dark_quark_shapes(events, model["darkQuarkIDs"], args.radii, args.quark_max_dr),
     }
     with open(os.path.join(args.dir, "JetRadius.pkl"), "wb") as out:
         pickle.dump(output, out)

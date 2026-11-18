@@ -32,6 +32,12 @@ truth jets.
     divided by mmed when the models have one); msd_vs_r.pdf, the soft-drop
     mass of the two leading jets (divided by mpi); <mjj|mt|msd>_dist_<model>.pdf
     at several R
+  * if the scans have the dark-quark rows (scan.py dark_quark_shapes): the
+    radius around each dark quark containing 95% of its dark hadrons' pT,
+    quark_r95_vs_pt.pdf vs the dark quark's pT, quark_r95_vs_2m_over_pt.pdf
+    vs 2M/pT (M: invariant mass of its dark hadrons), and
+    quark_r95_ratio_vs_pt.pdf, DeltaR_95 * pT / 2M vs pT (medians in bins with
+    at least --min-jets dark quarks)
   * with --displays, for models with a local events.root (first
     --display-max-events events), at --truth-radius:
     event_<i>_<model>.pdf, one event per truth-jet pT bin: the visible
@@ -109,6 +115,13 @@ def styles(n, cmap=None):
     return [{"color": c, "marker": MARKERS[i % 10], "ls": LINES[i % 10]} for i, c in enumerate(colors)]
 
 
+def binned_median(x, y, edges, min_n):
+    """Bin centers and the median of y in bins of x; NaN for bins with fewer than min_n entries."""
+    idx = np.digitize(x, edges) - 1
+    med = [np.median(y[idx == i]) if np.sum(idx == i) >= min_n else np.nan for i in range(len(edges) - 1)]
+    return (edges[1:] + edges[:-1]) / 2, np.array(med)
+
+
 def mean_grid(scan, metric, pt_range=(0, np.inf)):
     """Mean of a metric over truth jets in a visible-pT range: array[truth radius, radius].
 
@@ -176,6 +189,12 @@ def legend(ax):
         ax.legend(fontsize="small")
     else:
         ax.legend(fontsize="x-small", ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.18))
+
+
+def figure_legend(fig, ax):
+    """One legend for a figure of side-by-side panels, centered below all of them (after tight_layout)."""
+    handles, labels = ax.get_legend_handles_labels()
+    fig.legend(handles, labels, fontsize="x-small", ncol=min(len(labels), 5), loc="upper center", bbox_to_anchor=(0.5, 0))
 
 
 def truth_radius(scan, pct):
@@ -376,6 +395,7 @@ if __name__ == "__main__":
     parser.add_argument("--dist-truth-radii", type=float, nargs="+", default=[0.4, 0.8, 1.0, 1.2, 1.6, 2.0], help="truth radii R_DH for the truth-radius distributions")
     parser.add_argument("--dist-radii", type=float, nargs="+", default=[0.4, 0.8, 1.0, 1.2, 1.6, 2.0], help="radii R for the distributions")
     parser.add_argument("--pt-bins", type=float, nargs="+", default=[0, 50, 100, 200, np.inf], help="edges of the truth-jet visible pT bins [GeV]")
+    parser.add_argument("--quark-pt-bins", type=float, nargs="+", default=[0, 100, 200, 300, 500, 750, 1000, 1500, 2500], help="edges of the dark-quark pT bins [GeV]")
     parser.add_argument("--min-jets", type=int, default=100, help="fewest truth jets in a pT bin for its best R to be shown")
     parser.add_argument("--displays", action="store_true", help="also make event displays and stacked truth jets (needs events.root)")
     parser.add_argument("--display-radii", type=float, nargs="+", default=[0.4, 0.8, 1.0, 1.2, 1.6], help="radii R drawn in the displays")
@@ -541,11 +561,11 @@ if __name__ == "__main__":
         n_jets, lead2 = truth_jet_counts(scan)
         axes[0].plot(scan["truth_radii"], n_jets, label=label(scan), **style)
         axes[1].plot(scan["truth_radii"], lead2, label=label(scan), **style)
-    axes[0].set(xlabel="truth radius $R_{\\text{DH}}$", ylabel="mean truth jets per event (with visible decays)")
+    axes[0].set(xlabel="truth radius $R_{\\text{DH}}$", ylabel="mean truth jets per event\n(with visible decays)")
     axes[0].axhline(2, color="0.5", lw=0.8)
-    axes[1].set(xlabel="truth radius $R_{\\text{DH}}$", ylabel="fraction of truth visible $p_{\\text{T}}$ in the 2 leading truth jets")
-    legend(axes[1])
+    axes[1].set(xlabel="truth radius $R_{\\text{DH}}$", ylabel="fraction of truth visible $p_{\\text{T}}$\nin the 2 leading truth jets")
     fig.tight_layout()
+    figure_legend(fig, axes[1])
     save(fig, "truth_jets_vs_rdh")
 
     multi = [s for s in scans if len(s["truth_radii"]) > 1]
@@ -644,10 +664,10 @@ if __name__ == "__main__":
                 band(axes[0], scan["radii"], samples, style, label(scan), alpha=0.1)
                 qs = np.array([np.percentile(s, (16, 50, 84)) if len(s) else (np.nan,) * 3 for s in samples])
                 axes[1].plot(scan["radii"], (qs[:, 2] - qs[:, 0]) / 2 / qs[:, 1], label=label(scan), **style)
-            axes[0].set(xlabel="visible jet radius R", ylabel=f"{q_label}{unit(q)} (median, 16-84%)")
-            axes[1].set(xlabel="visible jet radius R", ylabel=f"{q_label} relative width (84-16%) / 2 / median")
-            legend(axes[1])
+            axes[0].set(xlabel="visible jet radius R", ylabel=f"{q_label}{unit(q)}\n(median, 16-84%)")
+            axes[1].set(xlabel="visible jet radius R", ylabel=f"{q_label} relative width\n(84-16%) / 2 / median")
             fig.tight_layout()
+            figure_legend(fig, axes[1])
             save(fig, f"{q}_vs_r")
             for scan in with_events:
                 fig, ax = plt.subplots()
@@ -661,6 +681,29 @@ if __name__ == "__main__":
                 ax.set_title(label(scan), fontsize=14)
                 legend(ax)
                 save(fig, f"{q}_dist_{args.x}_{scan['model'][args.x]}")
+
+    # shape of the dark-hadron shower around each dark quark (scan.py dark_quark_shapes)
+    with_quarks = [s for s in scans if "quarks" in s]
+    if with_quarks:
+        pt_edges, x_edges = np.array(args.quark_pt_bins), np.linspace(0, 3, 16)
+        pt_axis = "dark-quark $p_{\\text{T}}$ [GeV]"
+        figs = {name: plt.subplots() for name in ("quark_r95_vs_pt", "quark_r95_vs_2m_over_pt", "quark_r95_ratio_vs_pt")}
+        for scan, style in zip(with_quarks, styles(len(with_quarks))):
+            q = scan["quarks"]
+            ok = q["n_dh"] > 0
+            pt, r95, x = q["pt"][ok], q["r95"][ok], 2 * q["mass"][ok] / q["pt"][ok]
+            figs["quark_r95_vs_pt"][1].plot(*binned_median(pt, r95, pt_edges, args.min_jets), label=label(scan), **style)
+            figs["quark_r95_vs_2m_over_pt"][1].plot(*binned_median(x, r95, x_edges, args.min_jets), label=label(scan), **style)
+            figs["quark_r95_ratio_vs_pt"][1].plot(*binned_median(pt, r95 / x, pt_edges, args.min_jets), label=label(scan), **style)
+        figs["quark_r95_vs_2m_over_pt"][1].plot(x_edges, x_edges, ":", color="0.5", label="$2M/p_{\\text{T}}$")
+        r95_label = "median $\\Delta R_{95}$ of the dark hadrons"
+        figs["quark_r95_vs_pt"][1].set(xlabel=pt_axis, ylabel=r95_label)
+        figs["quark_r95_vs_2m_over_pt"][1].set(xlabel="$2M/p_{\\text{T}}$", ylabel=r95_label)
+        figs["quark_r95_ratio_vs_pt"][1].set(xlabel=pt_axis, ylabel="median $\\Delta R_{95} \\, p_{\\text{T}} / 2M$", ylim=(0, None))
+        for name, (fig, ax) in figs.items():
+            ax.set_title("dark hadrons around each dark quark, M: their invariant mass" + (f", $\\Delta R$ < {with_quarks[0]['quark_max_dr']}" if with_quarks[0].get("quark_max_dr") else ""), fontsize=12)
+            legend(ax)
+            save(fig, name)
 
     for scan in scans if args.displays else ():
         if os.path.exists(os.path.join(scan["dir"], "events.root")):

@@ -105,6 +105,28 @@ most sensitive to containment are the masses built from the two leading jets
 | `mjj` (truth) | invariant mass of the two leading dark-hadron jets at R_DH (all dark hadrons, including stable ones); approaches m_med when R_DH holds the whole dark shower |
 | `msd1`, `msd2` | soft-drop mass of the leading and subleading visible jet at R (constituents reclustered with Cambridge/Aachen; β = 0, z_cut = 0.1, R0 = R, as in CMS), to compare with the dark-hadron mass |
 
+## Shower around the dark quarks
+
+To choose R_DH from the jet shape, as for a quark or gluon jet in the SM, `scan.py` also stores the shape of the
+dark-hadron shower around each of the two dark quarks of the hard process (`radius.dark_quark_shapes`):
+
+- the axes are the two dark quarks of the mediator decay (`GenParticle` with |PID| in `darkQuarkIDs` from
+  `Meta.pkl` and Pythia status 23);
+- every dark hadron (`DarkHadronCandidate`, stable ones included) is assigned to the nearer dark quark in
+  (η, φ); with `--quark-max-dr`, dark hadrons farther than that from both quarks are dropped.
+
+One row per dark quark:
+
+| Column | Definition |
+|---|---|
+| `pt`, `eta` | the dark quark's pT and η |
+| `n_dh`, `mass` | the number of its dark hadrons and their invariant mass M (the mass of the dark shower, not the dark-hadron mass m_π) |
+| `r90`, `r95`, `r99` | radius around the dark quark containing 90/95/99% of its dark hadrons' pT (`radius_percentile`, as for the jets above) |
+| `psi_<r>` | the integrated jet shape Ψ(r) of its dark hadrons at each scanned R |
+
+`plot.py` shows ΔR95 vs the dark quark's pT and vs 2M/pT, and ΔR95 · pT / 2M vs pT, the boosted-object scaling
+R ≈ 2m/pT with the shower mass M in place of a particle mass.
+
 ## Relation to the literature
 
 | Here | Closest standard quantity | Reference |
@@ -161,7 +183,8 @@ python3 JetRadiusOptimization/plot.py -m "models/*" -x rinv --displays
   one row per (event, truth jet, R_DH, R) with the scores, `f_full`,
   `f_partial`, `f_nodh`, `n_dh`, `n_full`, the truth and matched-jet pT, and
   the jet-shape variables above; and one row per (event, R or R_DH) with the
-  number of jets, `mjj`, `mt`, `msd1` and `msd2`.
+  number of jets, `mjj`, `mt`, `msd1` and `msd2`. `quarks`: one row per dark quark with the columns
+  of [Shower around the dark quarks](#shower-around-the-dark-quarks).
 - `JetRadius_plots/` (from `plot.py`, `--dir`):
 
 | File | Shows |
@@ -179,6 +202,7 @@ python3 JetRadiusOptimization/plot.py -m "models/*" -x rinv --displays
 | `<quantity>_dist_<model>.pdf` | distributions of the scores, Ψ_T and the jet shapes at several R (`--dist-radii`) |
 | `truth_radius_dist_<model>.pdf`, `truth_r<pct>_by_rdh_<model>.pdf` | distributions of the truth ΔR₉₀/₉₅/₉₉, and of each at several R_DH (`--dist-truth-radii`) |
 | `truth_radius_vs_rdh.pdf` | mean truth ΔR₉₀/₉₅/₉₉ vs R_DH |
+| `quark_r95_vs_pt.pdf`, `quark_r95_vs_2m_over_pt.pdf`, `quark_r95_ratio_vs_pt.pdf` | median ΔR95 of the dark hadrons around each dark quark vs its pT (`--quark-pt-bins`) and vs 2M/pT, and ΔR95 · pT / 2M vs pT |
 | `event_<i>_<model>.pdf` (`--displays`) | one event per truth-pT bin: particles around the leading truth jet by origin, its truth ΔR₉₀/₉₅/₉₉, and the matched jet at each R (`--display-radii`) with its own ΔR₉₅ |
 | `stacked_<model>[_pt<bin>].pdf` (`--displays`) | all truth jets stacked around their axes, one image per particle origin (this truth jet's dark hadrons, other dark hadrons, ISR/UE), and pT vs ΔR stacked by origin; inclusive and per truth-pT bin |
 
